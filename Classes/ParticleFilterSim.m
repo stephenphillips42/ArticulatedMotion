@@ -1,22 +1,28 @@
 classdef ParticleFilterSim < handle
-%ParentParticleFilterSim Simulation of a particle filter on the
-%a generic manifold
+%Simulation of a particle filter on the a generic manifold
 
     properties
-        % Filter Properties
+        %%% Filter Properties
+        
         dim_space % Dimenstion of the embedding space of the manifold
         dim_meas  % Dimension of the measurement model
         n_samples % Number of particles in the filter
         x0        % Initial position of the true particle
-        % Simulation Properties
+        
+        %%% Simulation Properties
+        
         T         % Number of time steps simulated
         dt        % Time between steps (for visualization)
-        % Filter variables
+        
+        %%% Filter variables
+        
         simrun    % Stores information about current run
     end
     
     methods
         function sim = ParticleFilterSim(x0,T,nsamples,dim_space,dim_meas)
+            % Builds the basic necessities for running the simulation
+
             % Filter properties
             sim.n_samples = nsamples;
             sim.x0 = x0;
@@ -36,8 +42,14 @@ classdef ParticleFilterSim < handle
         
         %%%%%%%%%%%%%%%%%%%%%%%%% Run Simulation %%%%%%%%%%%%%%%%%%%%%%%%%%
         function [results] = simulate(sim,plotting)
+            % Runs the simulation of the particle filter.
+            % Based on parameters set in the constructor. 
+            % Input:
+            %   plotting - level of plotting desired, from 0-3
+            % Output:
+            %   results - numerical results of the simulation
             if nargin < 2
-                plotting = true;
+                plotting = 1;
             end
             % Precompute motion before simulation
             sim.simrun.x_gt = zeros(size(sim.x0,1),sim.T);
@@ -67,15 +79,32 @@ classdef ParticleFilterSim < handle
                 Neff(i) = 1/sum(w.^2);
                 % Propogate
                 samples = sim.f(samples);
+                k = max(1,i-1);
+                % Plot propgated particles
+                if plotting > 2
+                    sim.plot_simulation(...
+                        sim.simrun.x_gt(:,i),...
+                        sim.simrun.meas(:,i),...
+                        samples,w,...
+                        est(:,k));
+                end
                 w = sim.l1normalize(sim.h_likelihood(samples,sim.simrun.meas(:,i)));
+                % Plot reweighted particles
+                if plotting > 1
+                    sim.plot_simulation(...
+                        sim.simrun.x_gt(:,i),...
+                        sim.simrun.meas(:,i),...
+                        samples,w,...
+                        est(:,k));
+                end
                 % Resampling
                 if sim.should_resample(Neff(i),i)
                     [samples,w] = sim.resample(samples,w);
                 end
                 % Estimate
                 est(:,i) = sim.estimate(samples,w);
-                % Plotting code
-                if plotting
+                % Plot final resampled (or not) particles
+                if plotting > 0
                     sim.plot_simulation(...
                         sim.simrun.x_gt(:,i),...
                         sim.simrun.meas(:,i),...
@@ -85,6 +114,7 @@ classdef ParticleFilterSim < handle
                     pause(sim.dt)
                 end
             end
+            % Save results
             results.Neff = Neff;
             results.est = est;
             results.simrun = sim.simrun;

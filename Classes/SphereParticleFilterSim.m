@@ -3,21 +3,24 @@ classdef SphereParticleFilterSim < ProjectionParticleFilterSim
 %a sphere using the projection equation for the measurement
 
     properties
-        % Filter Properties
+        %%% Filter Properties
+        
         v        % Average velocity of motion
         sigma_f  % Variance of the noise for movement
-        % Plotting parameters
+        
+        %%% Plotting parameters
+        
         plot_type % Plot 2D or 3D?
-        X % Coordinates of the sphere surface
-        Y
-        Z
+        X % X coordinates of the sphere surface
+        Y % Y coordinates of the sphere surface
+        Z % Z coordinates of the sphere surface
         angle_offset % In 3D view, where we are in spin around the sphere
         angle_speed % In 3D view, how fast to spin around the sphere
-        % Helping parameters
+        
+        %%% Helping parameters
+        
         omega = [0; 0; 1];
         omegahat
-        circ_viz = [ cos(linspace(0,2*pi,200));
-                     sin(linspace(0,2*pi,200)) ];
     end
     
     methods
@@ -27,7 +30,7 @@ classdef SphereParticleFilterSim < ProjectionParticleFilterSim
             end
             % Parameters for parent classes
             nparticles = 1000; % Number of particles
-            dim = 3; % Dimension of the space - R^2
+            dim = 3; % Dimension of the space - R^3
             sigma_h = sqrt(0.02*(pi/180));
             sim@ProjectionParticleFilterSim(x0,T,nparticles,dim,sigma_h);
             % Motion model parameters
