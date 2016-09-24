@@ -1,4 +1,4 @@
-classdef CircleParticleFilterSim < ProjectionParticleFilterSim
+classdef Circle < ProjectionParticleFilterSim
 %ParentParticleFilterSim Simulation of a particle filter on the
 %a generic manifold
 
@@ -13,7 +13,7 @@ classdef CircleParticleFilterSim < ProjectionParticleFilterSim
     end
     
     methods
-        function sim = CircleParticleFilterSim(x0,T)
+        function sim = Circle(x0,T)
             % Parameters for parent classes
             nparticles = 300; % Number of particles
             dim = 2; % Dimension of the space - R^2

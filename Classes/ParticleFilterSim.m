@@ -53,7 +53,7 @@ classdef ParticleFilterSim < handle
             end
             % Precompute motion before simulation
             sim.simrun.x_gt = zeros(size(sim.x0,1),sim.T);
-            sim.simrun.x_gt(:,1) = normc(sim.x0);
+            sim.simrun.x_gt(:,1) = sim.x0;
             % Get appropriate sized storage for noise and measurements
             [~,ntst] = sim.f(sim.simrun.x_gt(:,1));
             sim.simrun.noise_f = zeros(size(ntst,1),sim.T);

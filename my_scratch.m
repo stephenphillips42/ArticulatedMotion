@@ -2,10 +2,11 @@
 rng(1561)
 tic
 % sim = CircleRiemannianParticleFilterSim(pi/2+pi/4,100);
-% sim = CircleParticleFilterSim(normc([-1;1]),100);
 % sim = SphereRiemannianParticleFilterSim(normc([-1;-1;1]),30);
-% sim = SphereParticleFilterSim(normc([-1;-1;1]),20);
-sim = TangentSphereParticleFilterSim([normc([-1;-1;1]);0;0.5;0.5],20,false);
+% sim = Circle(normc([-1;1]),100);
+% sim = Sphere(normc([-1;-1;1]),20);
+% sim = TangentSphere([normc([-1;-1;1]);0;0.5;0.5],30,true);
+sim = TangentSphereLength([normc([-1;-1;1]);0;0.5;0.5;1.1],20,true);
 results = sim.simulate(1);
 toc
 % profile off

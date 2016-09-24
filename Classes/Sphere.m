@@ -1,4 +1,4 @@
-classdef SphereParticleFilterSim < ProjectionParticleFilterSim
+classdef Sphere < ProjectionParticleFilterSim
 %SphereParticleFilterSim Simulation of a particle filter on the
 %a sphere using the projection equation for the measurement
 
@@ -24,7 +24,7 @@ classdef SphereParticleFilterSim < ProjectionParticleFilterSim
     end
     
     methods
-        function sim = SphereParticleFilterSim(x0,T,plot_type)
+        function sim = Sphere(x0,T,plot_type)
             if nargin < 3
                 plot_type = true;
             end
@@ -56,10 +56,14 @@ classdef SphereParticleFilterSim < ProjectionParticleFilterSim
         end
 
         %%%%%%%%%%%%%%%%%%% Particle filter functions %%%%%%%%%%%%%%%%%%%%
+        function [samples,w] = create_samples(sim)
+            samples = normc(randn(sim.dim_space,sim.n_samples));
+            w = sim.l1normalize(ones(1,length(samples)));
+        end
+        
         function v = estimate(~,samples,w)
             v = normc(sum(bsxfun(@times,samples,w),2));
         end
-        
 
         %%%%%%%%%%%%%%%%%%%% Visualization functions %%%%%%%%%%%%%%%%%%%%%%
         function plot_simulation(sim,x_gt,meas,samples,w,est)

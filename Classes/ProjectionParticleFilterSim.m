@@ -1,6 +1,6 @@
 classdef ProjectionParticleFilterSim < ParticleFilterSim
-%ParentParticleFilterSim Simulation of a particle filter on the
-%a generic manifold
+%ProjectionParticleFilterSim Simulation of a particle filter on the
+%a generic manifold, specifically with a projection model of measurement
 
     properties
         % Filter Properties

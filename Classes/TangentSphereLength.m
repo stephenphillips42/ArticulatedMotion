@@ -1,12 +1,15 @@
-classdef TangentSphere < ProjectionParticleFilterSim
-%TangentSphere Simulation of a particle filter on the a sphere using the
+classdef TangentSphereLength < ParticleFilterSim
+%TangentSphereLength Simulation of a particle filter on the a sphere using the
 %projection equation for the measurement, with the velocity attached in
-%the state
+%the state, as well as the scale of the sphere
 
     properties
         %%% Filter Properties
         v        % Average velocity of motion
         sigma_f  % Variance of the noise for movement
+        sigma_h  % Variance of the measurements
+        R_h      % Rotation of measurement frame
+        T_h      % Translation of the measurement frame
         
         %%% Plotting parameters
         
@@ -17,30 +20,27 @@ classdef TangentSphere < ProjectionParticleFilterSim
         angle_offset % In 3D view, where we are in spin around the sphere
         angle_speed % In 3D view, how fast to spin around the sphere
 
-        % Helping parameters
+        %%% Helping parameters
     end
     
     methods
-        function sim = TangentSphere(x0,T,plot_type)
+        function sim = TangentSphereLength(x0,T,plot_type)
             if nargin < 3
                 plot_type = true;
             end
             % Parameters for parent classes
-            nparticles = 800; % Number of particles
-            dim = 6; % Dimension of the space - R^3 x R^3
-            sigma_h = sqrt(0.1*(pi/180));
-            proj_dims = 1:2; % Only first 2 dimensions are projected
-            div_dim = 3; % Divide by the 3rd dimension
-            sim@ProjectionParticleFilterSim(...
-                    x0,T,nparticles,dim,sigma_h,...
-                    proj_dims,div_dim,...
-                    [eye(3) zeros(3); zeros(3,6)],...
-                    [0;0;4;0;0;0]);
+            nparticles = 2000; % Number of particles
+            dim = 7; % Dimension of the space - R^3 x R^3
+            meas_dim = 2; % Only 2D perspective projection
+            sim@ParticleFilterSim(x0,T,nparticles,dim,meas_dim);
+            % Measurement model parameters
+            sim.sigma_h = sqrt(0.05*(pi/180));
+            sim.R_h = eye(3);
+            sim.T_h = [0;0;4];
             % Motion model parameters
-            sim.sigma_f = sqrt(0.1*(pi/180)); 
-            sim.plot_type = plot_type;
-            
+            sim.sigma_f = sqrt(0.05*(pi/180)); 
             % Visualization Variables
+            sim.plot_type = plot_type;
             [sim.X, sim.Y, sim.Z] = sphere(20);
         end
         
@@ -48,17 +48,32 @@ classdef TangentSphere < ProjectionParticleFilterSim
         % Motion Model
         function [v, noise] = f(sim,x,noise)
             if nargin < 3
-                noise = randn(size(x(4:6,:)))*sim.sigma_f;
+                noise = randn(size(x(4:7,:)))*sim.sigma_f;
             end
-            v = sim.tangent_sphere_exp_map(x,[x(4:6,:);noise],1);
+            v = [sim.tangent_sphere_exp_map(x(1:6,:),[x(4:6,:);noise(1:3,:)],1); ...
+                 x(7,:) + noise(4,:)];
         end
-
+        % Measurement Model - standard projection model
+        function [meas, noise] = h(sim,x,noise)
+            if nargin < 3
+                noise = randn(sim.dim_meas,size(x,2))*sim.sigma_h;
+            end
+            X_scale = bsxfun(@times,x(1:3,:),x(7,:));
+            meas = sim.Proj(bsxfun(@plus,sim.R_h*X_scale,sim.T_h)) + noise;
+        end
+        % Measurement Likelihood
+        function l = h_likelihood(sim,x,z)
+            d = bsxfun(@minus,sim.h(x,0),z);
+            l = prod(normpdf(d,0,sim.sigma_h),1);
+        end
+        
         %%%%%%%%%%%%%%%%%%% Particle filter functions %%%%%%%%%%%%%%%%%%%%
         function [samples,w] = create_samples(sim)
             s_pos = normc(randn(3,sim.n_samples));
             s_vel = randn(3,sim.n_samples);
             s_vel = s_vel - bsxfun(@times,dot(s_vel,s_pos),s_pos);
-            samples = [s_pos; s_vel];
+            s_scale = 0.5+1*rand(1,sim.n_samples);
+            samples = [s_pos; s_vel; s_scale];
             w = sim.l1normalize(ones(1,length(samples)));
         end
 
@@ -66,7 +81,8 @@ classdef TangentSphere < ProjectionParticleFilterSim
             pos = normc(sum(bsxfun(@times,samples(1:3,:),w),2));
             % This is very much not correct but I'll worry about it later
             vel = (sum(bsxfun(@times,samples(4:6,:),w),2));
-            v = [pos; vel];
+            scale = (sum(bsxfun(@times,samples(7,:),w),2));
+            v = [pos; vel; scale];
         end
         
 
@@ -81,46 +97,52 @@ classdef TangentSphere < ProjectionParticleFilterSim
 
         function plot_simulation_3D(sim,x_gt,meas,samples,w,est)
             % Plot world
-            colormap summer;
-            C = ones(size(sim.X));
-            C(:) = sim.h_likelihood([sim.X(:) sim.Y(:) sim.Z(:) zeros(length(sim.Z(:)),3)].', meas);
-            surf(sim.X,sim.Y,sim.Z,C);
+%             colormap summer;
+%             C = ones(size(sim.X));
+%             C(:) = sim.h_likelihood([sim.X(:) sim.Y(:) sim.Z(:) zeros(length(sim.Z(:)),4)].', meas);
+%             surf(sim.X,sim.Y,sim.Z,C);
             % Change view of world
             [az,el] = view;
             % [az_gt,el_gt,~] = cart2sph(x_gt(1),x_gt(2),x_gt(3));
             % disp([az,el,az_gt,el_gt,az_gt*(180/pi)])
             view(az, el)
             axis equal
-            hold on
             % Plot samples
-            scatter3(samples(1,:),samples(2,:),samples(3,:),eps+w*(2^14),'b.')
-            quiver3(samples(1,:),samples(2,:),samples(3,:),...
-                    samples(4,:),samples(5,:),samples(6,:),0,'b')
+            scatter3(samples(1,:).*samples(7,:),...
+                     samples(2,:).*samples(7,:),...
+                     samples(3,:).*samples(7,:),...
+                     eps+w*(2^14),'b.')
+            hold on
+            quiver3(samples(1,:).*samples(7,:),...
+                    samples(2,:).*samples(7,:),...
+                    samples(3,:).*samples(7,:),...
+                    samples(4,:).*samples(7,:),...
+                    samples(5,:).*samples(7,:),...
+                    samples(6,:).*samples(7,:),0,'b')
             % Plot measurement
             start_point = -sim.R_h.'*sim.T_h;
-            end_point = sim.R_h.'*([meas;1;0;0;0]*10 - sim.T_h);
+            end_point = sim.R_h.'*([meas;1]*10 - sim.T_h);
             plot3([start_point(1),end_point(1)], ...
                  [start_point(2),end_point(2)], ...
-                 [start_point(3),end_point(3)],'m-')
+                 [start_point(3),end_point(3)],'r-')
             % Plot estimate
-            scatter3(est(1),est(2),est(3),500,'c.')
-            quiver3(est(1),est(2),est(3),...
-                    est(4),est(5),est(6),0,'c')
+            scatter3(est(1)*est(7),est(2)*est(7),est(3)*est(7),500,'c.')
+            quiver3(est(1)*est(7),est(2)*est(7),est(3)*est(7),...
+                    est(4)*est(7),est(5)*est(7),est(6)*est(7),0,'c')
             % Plot ground truth
-            scatter3(x_gt(1),x_gt(2),x_gt(3),500,'r.')
-            quiver3(x_gt(1),x_gt(2),x_gt(3),...
-                    x_gt(4),x_gt(5),x_gt(6),0,'r')
+            scatter3(x_gt(1)*x_gt(7),x_gt(2)*x_gt(7),x_gt(3)*x_gt(7),500,'r.')
+            quiver3(x_gt(1)*x_gt(7),x_gt(2)*x_gt(7),x_gt(3)*x_gt(7),...
+                    x_gt(4)*x_gt(7),x_gt(5)*x_gt(7),x_gt(6)*x_gt(7),0,'r')
             axis equal
             axis([-1.2 1.2 -1.2 1.2 -1.2 1.2])
             hold off
-            disp(x_gt.')
         end
         
         function plot_simulation_2D(sim,x_gt,meas,samples,w,est)
             % Plot likelihood
             [a,b] = meshgrid(-pi:0.01:pi,0:0.01:pi);
             z = zeros(size(a));
-            z(:) = sim.h_likelihood([sim.cartesian_coords([a(:) b(:)].'); zeros(3,length(a(:)))],meas);
+            z(:) = sim.h_likelihood([sim.cartesian_coords([a(:) b(:)].'); zeros(4,length(a(:)))],meas);
             figure(1)
             colormap summer
             contourf(a,b,z,5)
@@ -266,6 +288,10 @@ classdef TangentSphere < ProjectionParticleFilterSim
             C = [ cos(X(1,:)).*sin(X(2,:));
                   sin(X(1,:)).*sin(X(2,:));
                   cos(X(2,:)) ];
+        end
+        
+        function v = Proj(~,x)
+            v = bsxfun(@rdivide,x(1:2,:),x(3,:));
         end
 
         
