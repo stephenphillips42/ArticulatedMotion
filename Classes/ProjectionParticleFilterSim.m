@@ -23,7 +23,7 @@ classdef ProjectionParticleFilterSim < ParticleFilterSim
                 R_h = eye(dim_space);
             end
             if nargin < 9
-                T_h = [zeros(dim_space-1,1);dim_space];
+                T_h = [zeros(length(proj_dims),1); length(dim_space)+1];
             end
             sim@ParticleFilterSim(x0,T,nsamples,dim_space,length(proj_dims));
             sim.proj_dims = proj_dims;
