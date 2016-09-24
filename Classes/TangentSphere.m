@@ -113,7 +113,6 @@ classdef TangentSphere < ProjectionParticleFilterSim
             axis equal
             axis([-1.2 1.2 -1.2 1.2 -1.2 1.2])
             hold off
-            disp(x_gt.')
         end
         
         function plot_simulation_2D(sim,x_gt,meas,samples,w,est)
