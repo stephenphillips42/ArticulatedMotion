@@ -138,7 +138,7 @@ classdef SphereParticleFilterSim < ProjectionParticleFilterSim
         end
 
 
-        %%%%%%%%%%%%%%%%%%%%%%% Helper functions %%%%%%%%%%%%%%%%%%%%%%%%%%
+        %%%%%%%%%%%%%%%% Differential Geometry functions %%%%%%%%%%%%%%%%%%%
         function y = sphere_exp_map(~,x,v,t)
             v = t*v;
             nrm_tv = sqrt(sum(v.^2,1));%norm(tv, 'fro');
@@ -148,6 +148,7 @@ classdef SphereParticleFilterSim < ProjectionParticleFilterSim
             y = bsxfun(@rdivide, y, ynrms);
         end
         
+        %%%%%%%%%%%%%%%%%%%%%%% Helper functions %%%%%%%%%%%%%%%%%%%%%%%%%%
         function xhat = hat(~,x)
             xhat = [     0, -x(3),  x(2); 
                       x(3),     0, -x(1);
