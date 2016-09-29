@@ -59,10 +59,24 @@ classdef TangentSphereProduct < ParticleFilterSim
         % Measurement Likelihood
         function l = h_likelihood(sim,x,z)
             d = bsxfun(@minus,sim.h(x,0),z);
-            l = prod(normpdf(d,0,sim.sigma_h),1);
+            l = prod(normpdf(d,0,sim.sigma_h),1)+eps;
         end
 
         %%%%%%%%%%%%%%%%%%% Particle filter functions %%%%%%%%%%%%%%%%%%%%
+        function [samples,w] = create_samples(sim)
+            nlengths = length(sim.lengths);
+            samples = zeros(6*nlengths,sim.n_samples);
+            my_x0 = sim.simrun.x_gt(:,1);
+            for i = 1:nlengths
+                inds = (1:6) + 6*(i-1);
+                s_pos = normc(bsxfun(@plus,my_x0(inds(1:3)), 0.05*randn(3,sim.n_samples)));
+                s_vel = bsxfun(@plus,1*my_x0(inds(4:6)), 0.05*randn(3,sim.n_samples));
+                s_vel = s_vel - bsxfun(@times,dot(s_vel,s_pos),s_pos);
+                samples(inds,:) = [s_pos; s_vel];
+            end
+            w = sim.l1normalize(ones(1,length(samples)));
+        end
+
         function v = estimate(~,samples,w)
             % This is very VERY much not correct but I'll worry about it later
             pos1 = normc(sum(bsxfun(@times,samples(1:3,:),w),2));
@@ -74,6 +88,9 @@ classdef TangentSphereProduct < ParticleFilterSim
         
 
         %%%%%%%%%%%%%%%%%%%% Visualization functions %%%%%%%%%%%%%%%%%%%%%%
+        function plot_simulation_other(sim,x_gt,meas,samples,w,est)
+            plot(w)
+        end
         function plot_simulation(sim,x_gt,meas,samples,w,est)
             % Change view of world
             scatter3(0,0,0);
@@ -92,7 +109,7 @@ classdef TangentSphereProduct < ParticleFilterSim
                      [start_point(3),end_point(3)],'m-')
             end
             % Plot estimate
-            % sim.plot_joint(est,'c');
+            sim.plot_joint(est,'c');
             % Plot ground truth
             sim.plot_joint(x_gt,'r');
             hold off
