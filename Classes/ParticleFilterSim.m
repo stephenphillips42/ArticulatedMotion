@@ -76,19 +76,8 @@ classdef ParticleFilterSim < handle
             % Visualization
             for i = 1:sim.T
                 % Get metrics
-                Neff(i) = 1/sum(w.^2);
-                % Propogate
-                samples = sim.f(samples);
-                k = max(1,i-1);
-                % Plot propgated particles
-                if plotting > 2
-                    sim.plot_simulation(...
-                        sim.simrun.x_gt(:,i),...
-                        sim.simrun.meas(:,i),...
-                        samples,w,...
-                        est(:,k));
-                end
                 w = sim.l1normalize(sim.h_likelihood(samples,sim.simrun.meas(:,i)));
+                Neff(i) = 1/sum(w.^2);
                 % Plot reweighted particles
                 if plotting > 1
                     sim.plot_simulation(...
@@ -112,6 +101,17 @@ classdef ParticleFilterSim < handle
                         est(:,i));
                     % Pause for viewing
                     pause(sim.dt)
+                end
+                % Propogate
+                samples = sim.f(samples);
+                k = max(1,i-1);
+                % Plot propgated particles
+                if plotting > 2
+                    sim.plot_simulation(...
+                        sim.simrun.x_gt(:,i),...
+                        sim.simrun.meas(:,i),...
+                        samples,w,...
+                        est(:,k));
                 end
             end
             % Save results
