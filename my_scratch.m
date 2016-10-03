@@ -2,7 +2,6 @@
 rng(1561)
 tic
 nsteps = 20;
-ndims = 3;
 % TODO: Make this a test script by doing if statements
 % sim = Circle(normc([-1;1]),nsteps);
 % sim = Sphere(normc([-1;-1;1]),nsteps);
@@ -11,12 +10,21 @@ ndims = 3;
 % sim = TangentSphere([normc([1;1;0]);0;0;0.5],nsteps,true);
 % sim.sigma_f = 0.00000000001;
 % sim.n_samples = 2000;
-% sim = TangentSphereProduct(...
-%         [normc([1;1;0]);0;0;0.5;normc([1;0;0]);0;0;0.5],...
-%         nsteps);
-% sim.sigma_f = 0.001;
-% sim.n_samples = 6000;
-% results = sim.simulate(1);
+sim = TangentSphereProduct(...
+        [normc([1;1;0]);0;0;0.5;normc([1;0;0]);0;0;0.5],...
+        nsteps);
+sim.sigma_f = 0.001;
+sim.n_samples = 6000;
+results = sim.simulate(0);
+%% Plot error
+figure;
+[err, err_full] = sim.compute_error(results.simrun.x_gt, results.est);
+% yyaxis left
+% plot(err)
+% yyaxis right
+% plot(results.Neff/max(results.Neff)*max(err))
+% plotyy(1:nsteps,err_full(1:2,:),1:nsteps,results.Neff)
+plotyy(1:nsteps,rad2deg(err_full(1:2,:)),1:nsteps,results.Neff)
 
 % Create data TODO: Make this a function wrapping IcraCreateData
 % tic

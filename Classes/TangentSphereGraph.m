@@ -134,6 +134,24 @@ classdef TangentSphereGraph < ParticleFilterSim
             end
         end
         
+        function [e, e_full] = compute_error(sim,x_true,x_est)
+            % Position error (degrees)
+            e1 = zeros(sim.n_edges,size(x_true,2));
+            for i = 1:sim.n_edges
+                e1(i,:) = acos(dot(normc(x_true((1:3)+6*(i-1),:)),...
+                                   normc(x_est((1:3)+6*(i-1),:))));
+            end
+            % Velocity percent error
+            e2 = zeros(sim.n_edges,size(x_true,2));
+            for i = 1:sim.n_edges
+                true_norms = sqrt(sum(x_true((4:6)+6*(i-1),:).^2,1));
+                diff_norms = sqrt(sum((x_true((4:6)+6*(i-1),:) - ...
+                                       x_est((4:6)+6*(i-1),:)).^2,1));
+                e2(i,:) = diff_norms ./ true_norms;
+            end
+            e = sum(e1,1);
+            e_full = [e1;e2];
+        end
 
         %%%%%%%%%%%%%%%%%%%% Visualization functions %%%%%%%%%%%%%%%%%%%%%%
         function plot_simulation(sim,x_gt,meas,samples,w,est)

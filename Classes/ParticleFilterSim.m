@@ -149,11 +149,6 @@ classdef ParticleFilterSim < handle
             l = 1;
         end
         
-        % Error function
-        function e = compute_error(~,x1,x2)
-            e = norm(x1-x2);
-        end
-        
         %%%%%%%%%%%%%%%%%%% Particle filter functions %%%%%%%%%%%%%%%%%%%%
         function [samples,w] = create_samples(sim)
             samples = (randn(sim.dim_space,sim.n_samples));
@@ -181,6 +176,14 @@ classdef ParticleFilterSim < handle
         
         function v = estimate(~,samples,w)
             v = sum(bsxfun(@times,samples,w),2);
+        end
+        
+        function [e, e_full] = compute_error(~,x_true,x_est)
+            % e is a single number for each sample
+            % e_full is more detailed, giving a vector of errors. Sometimes
+            % these two are the same
+            e = sqrt(sum((x_true-x_est).^2,1));
+            e_full = abs(x_true-x_est);
         end
         
         %%%%%%%%%%%%%%%%%%%% Visualization functions %%%%%%%%%%%%%%%%%%%%%%

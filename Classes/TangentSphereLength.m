@@ -84,7 +84,20 @@ classdef TangentSphereLength < ParticleFilterSim
             scale = (sum(bsxfun(@times,samples(7,:),w),2));
             v = [pos; vel; scale];
         end
-        
+
+        function [e, e_full] = compute_error(~,x_true,x_est)
+            % Position error (degrees)
+            e1 = acos(dot(normc(x_true(1:3,:)),normc(x_est(1:3,:))));
+            % Normalized velocity error
+            e2 = sqrt(sum((x_true(4:6,:)-x_est(4:6,:)).^2,1)) ./...
+                    sqrt(sum(x_true(4:6,:).^2,1));
+            % Length error
+            e3 = sqrt(sum((x_true(7,:)-x_est(7,:)).^2,1)) ./ ...
+                    sqrt(sum(x_true(7,:).^2,1));
+            % Full errors
+            e = deg2rad(e1)+e2+e3; % Errors not equally balanced
+            e_full = [e1;e2;e3];
+        end
 
         %%%%%%%%%%%%%%%%%%%% Visualization functions %%%%%%%%%%%%%%%%%%%%%%
         function plot_simulation(sim,x_gt,meas,samples,w,est)

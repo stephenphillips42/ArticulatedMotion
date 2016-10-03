@@ -66,9 +66,20 @@ classdef TangentSphere < ProjectionParticleFilterSim
             pos = normc(sum(bsxfun(@times,samples(1:3,:),w),2));
             % This is very much not correct but I'll worry about it later
             vel = (sum(bsxfun(@times,samples(4:6,:),w),2));
+            % Project velocity
+            vel = vel - dot(vel,pos)*pos;
             v = [pos; vel];
         end
-        
+
+        function [e, e_full] = compute_error(~,x_true,x_est)
+            % Position error (degrees)
+            e1 = acos(dot(normc(x_true(1:3,:)),normc(x_est(1:3,:))));
+            % Velocity percent error
+            e2 = sqrt(sum((x_true(4:6,:)-x_est(4:6,:)).^2,1)) ./...
+                    sqrt(sum(x_true(4:6,:).^2,1));
+            e = e1+e2; % Errors not equally balanced
+            e_full = [e1;e2];
+        end
 
         %%%%%%%%%%%%%%%%%%%% Visualization functions %%%%%%%%%%%%%%%%%%%%%%
         function plot_simulation(sim,x_gt,meas,samples,w,est)

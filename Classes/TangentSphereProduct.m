@@ -85,7 +85,19 @@ classdef TangentSphereProduct < ParticleFilterSim
             vel2 = (sum(bsxfun(@times,samples(10:12,:),w),2));
             v = [pos1; vel1; pos2; vel2];
         end
-        
+
+        function [e, e_full] = compute_error(~,x_true,x_est)
+            % Position error (degrees)
+            e1 = acos(dot(normc(x_true(1:3,:)),normc(x_est(1:3,:))));
+            e2 = acos(dot(normc(x_true(7:9,:)),normc(x_est(7:9,:))));
+            % Velocity percent error
+            e3 = sqrt(sum((x_true(4:6,:)-x_est(4:6,:)).^2,1)) ./...
+                    sqrt(sum(x_true(4:6,:).^2,1));
+            e4 = sqrt(sum((x_true(10:12,:)-x_est(10:12,:)).^2,1)) ./...
+                    sqrt(sum(x_true(10:12,:).^2,1));
+            e = e1+e2; % Errors not equally balanced
+            e_full = [e1;e2;e3;e4];
+        end
 
         %%%%%%%%%%%%%%%%%%%% Visualization functions %%%%%%%%%%%%%%%%%%%%%%
         function plot_simulation_other(sim,x_gt,meas,samples,w,est)

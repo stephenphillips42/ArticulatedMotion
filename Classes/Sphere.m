@@ -65,6 +65,11 @@ classdef Sphere < ProjectionParticleFilterSim
             v = normc(sum(bsxfun(@times,samples,w),2));
         end
 
+        function [e, e_full] = compute_error(~,x_true,x_est)
+            e = acos(dot(normc(x_true),normc(x_est)));
+            e_full = e;
+        end
+        
         %%%%%%%%%%%%%%%%%%%% Visualization functions %%%%%%%%%%%%%%%%%%%%%%
         function plot_simulation(sim,x_gt,meas,samples,w,est)
             if sim.plot_type

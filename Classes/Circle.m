@@ -45,6 +45,10 @@ classdef Circle < ProjectionParticleFilterSim
             w = sim.l1normalize(ones(1,length(samples)));
         end
         
+        function [e,e_full] = compute_error(~,x_true,x_est)
+            e = acos(dot(normc(x_true),normc(x_est)));
+            e_full = e;
+        end
 
         %%%%%%%%%%%%%%%%%%%% Visualization functions %%%%%%%%%%%%%%%%%%%%%%
         function plot_simulation(sim,x_gt,meas,samples,w,est)
