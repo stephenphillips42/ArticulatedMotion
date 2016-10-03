@@ -41,33 +41,21 @@ classdef ParticleFilterSim < handle
         end
         
         %%%%%%%%%%%%%%%%%%%%%%%%% Run Simulation %%%%%%%%%%%%%%%%%%%%%%%%%%
-        function [results] = simulate(sim,plotting)
+        function [results] = simulate(sim,plotting,simrun)
             % Runs the simulation of the particle filter.
             % Based on parameters set in the constructor. 
             % Input:
-            %   plotting - level of plotting desired, from 0-3
+            %   plotting - (optional) level of plotting desired, from 0-3
+            %   simrun   - (optional) precomputed simulation run
             % Output:
             %   results - numerical results of the simulation
             if nargin < 2
                 plotting = 1;
             end
-            % Precompute motion before simulation
-            sim.simrun.x_gt = zeros(size(sim.x0,1),sim.T);
-            sim.simrun.x_gt(:,1) = sim.x0;
-            % Get appropriate sized storage for noise and measurements
-            [~,ntst] = sim.f(sim.simrun.x_gt(:,1));
-            sim.simrun.noise_f = zeros(size(ntst,1),sim.T);
-            [mtst,ntst] = sim.h(sim.simrun.x_gt(:,1));
-            sim.simrun.meas = zeros(size(mtst,1),sim.T);
-            sim.simrun.noise_h = zeros(size(ntst,1),sim.T);
-            % Compute the motion, measurements, measurements, and noise
-            [sim.simrun.meas(:,1), sim.simrun.noise_h(:,1)] = ...
-                sim.h(sim.simrun.x_gt(:,1));
-            for i = 2:sim.T
-                [sim.simrun.x_gt(:,i), sim.simrun.noise_f(:,i)] = ...
-                    sim.f(sim.simrun.x_gt(:,i-1));
-                [sim.simrun.meas(:,i), sim.simrun.noise_h(:,i)] = ...
-                    sim.h(sim.simrun.x_gt(:,i));
+            if nargin < 3
+                sim.simrun = sim.create_simrun();
+            else
+                sim.simrun = simrun;
             end
 
             [samples,w] = sim.create_samples();
@@ -120,6 +108,27 @@ classdef ParticleFilterSim < handle
             results.simrun = sim.simrun;
         end
         
+        function [simrun] = create_simrun(sim)
+            % Precompute motion before simulation
+            simrun.x_gt = zeros(size(sim.x0,1),sim.T);
+            simrun.x_gt(:,1) = sim.x0;
+            % Get appropriate sized storage for noise and measurements
+            [~,ntst] = sim.f(simrun.x_gt(:,1));
+            simrun.noise_f = zeros(size(ntst,1),sim.T);
+            [mtst,ntst] = sim.h(simrun.x_gt(:,1));
+            simrun.meas = zeros(size(mtst,1),sim.T);
+            simrun.noise_h = zeros(size(ntst,1),sim.T);
+            % Compute the motion, measurements, measurements, and noise
+            [simrun.meas(:,1), simrun.noise_h(:,1)] = ...
+                sim.h(simrun.x_gt(:,1));
+            for i = 2:sim.T
+                [simrun.x_gt(:,i), simrun.noise_f(:,i)] = ...
+                    sim.f(simrun.x_gt(:,i-1));
+                [simrun.meas(:,i), simrun.noise_h(:,i)] = ...
+                    sim.h(simrun.x_gt(:,i));
+            end
+        end
+        
         %%%%%%%%%%%%%%%%%%%%%%% Model of the system %%%%%%%%%%%%%%%%%%%%%%%
         % Motion Model
         function [v, noise] = f(sim,x,noise)
@@ -138,6 +147,11 @@ classdef ParticleFilterSim < handle
         % Measurement Likelihood
         function l = h_likelihood(sim,x,z)
             l = 1;
+        end
+        
+        % Error function
+        function e = compute_error(~,x1,x2)
+            e = norm(x1-x2);
         end
         
         %%%%%%%%%%%%%%%%%%% Particle filter functions %%%%%%%%%%%%%%%%%%%%
