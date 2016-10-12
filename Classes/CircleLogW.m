@@ -1,4 +1,4 @@
-classdef Circle < ProjectionParticleFilterSim
+classdef CircleLogW < ProjectionParticleFilterSim
 %ParentParticleFilterSim Simulation of a particle filter on the
 %a generic manifold
 
@@ -13,7 +13,7 @@ classdef Circle < ProjectionParticleFilterSim
     end
     
     methods
-        function sim = Circle(x0,T)
+        function sim = CircleLogW(x0,T)
             % Parameters for parent classes
             nparticles = 300; % Number of particles
             dim = 2; % Dimension of the space - R^2
@@ -33,6 +33,11 @@ classdef Circle < ProjectionParticleFilterSim
             end
             vel = sim.v*sim.J*x + noise;
             v = sim.CircleExpMap(x,vel,1);
+        end
+        % Measurement Likelihood
+        function l = h_likelihood(sim,x,z)
+            d = bsxfun(@minus,sim.h(x,0),z);
+            l = sum(sim.lognormpdf(d,0,sim.sigma_h),1);
         end
 
         %%%%%%%%%%%%%%%%%%% Particle filter functions %%%%%%%%%%%%%%%%%%%%
@@ -66,7 +71,7 @@ classdef Circle < ProjectionParticleFilterSim
                  [start_point(2),end_point(2)],'r-')
              % Get and plot estimate
             plot(est(1)*l,est(2)*l,'c-')
-            scatter(samples(1,:),samples(2,:),w*(12*2^11),'b.')
+            scatter(samples(1,:),samples(2,:),exp(w)*(12*2^11),'b.')
             hold off
             axis equal
             axis([-1.2 1.2 -1.2 1.2])
@@ -74,6 +79,31 @@ classdef Circle < ProjectionParticleFilterSim
 
 
         %%%%%%%%%%%%%%%%%%%%%%% Helper functions %%%%%%%%%%%%%%%%%%%%%%%%%%
+        function w = normalize(~,w)
+            % Working in log space
+            w = w - log(sum(exp(w)));
+        end
+        function w = uniform(sim)
+            w = ones(1,sim.n_samples)*(-log(sim.n_samples));
+        end
+        function Neff = compute_Neff(~,w)
+            Neff = 1/sum(exp(2*w));
+        end
+
+        function [samples,w] = resample(sim,samples,w)
+            % Basically our standard algorithm but in log 
+            hist_edges = min([-inf sim.log_cum_sum(w)],0);
+            % get the upper edge exact
+            hist_edges(end) = 0;
+            U1 = rand/sim.n_samples;
+            log_intervals = log(U1:(1/sim.n_samples):1);
+            % this works like the inverse of the empirical distribution and returns
+            % the interval where the sample is to be found
+            [~, idx] = histc(log_intervals, hist_edges);
+            samples = samples(:,idx);
+            w = sim.uniform();
+        end
+
         function y = CircleExpMap(~,x,v,t)
             v = t*v;
             nrm_tv = sqrt(sum(v.^2,1));%norm(tv, 'fro');
@@ -82,7 +112,29 @@ classdef Circle < ProjectionParticleFilterSim
             ynrms = sqrt(sum(y.^2,1));
             y = bsxfun(@rdivide, y, ynrms);
         end
+
+        function p = lognormpdf(~,x,mu,sigma)
+            p = -log(sqrt(2*pi)*sigma)+(-(x - mu).^2/(2*sigma.^2));
+        end
         
+        function z = log_sum(~,x,y)
+            m1 = max(x,y);
+            m2 = min(x,y);
+            if m1 > m2 + 200
+                z = m1;
+            else
+                z = m1 + log1p(exp(m2-m1));
+            end
+        end
+        
+        function W = log_cum_sum(sim,w)
+            W = zeros(size(w));
+            W(1) = w(1);
+            for i = 2:length(w)
+                W(i) = sim.log_sum(W(i-1),w(i));
+            end
+        end
+
     end
     
 end

@@ -30,16 +30,16 @@ classdef TangentSphereGraph < ParticleFilterSim
                 root_pos = [0;0;0];
             end
             % Parameters for parent classes
-            nparticles = 2000; % Number of particles
+            nparticles = 10000; % Number of particles
             dim = 12; % Dimension of the space - R^3 x R^3
             meas_dim = length(L)*2;
             sim@ParticleFilterSim(x0,T,nparticles,dim,meas_dim);
             % Measurement model parameters
-            sim.sigma_h = sqrt(0.005*(pi/180));
+            sim.sigma_h = 0.005;
             sim.R_h = eye(3);
             sim.T_h = [0;0;4];
             % Motion model parameters
-            sim.sigma_f = sqrt(0.001*(pi/180));
+            sim.sigma_f = sqrt(0.005*(pi/180));
             % Graph parameters
             sim.n_edges = size(E,1);
             sim.lengths = L;
@@ -77,7 +77,9 @@ classdef TangentSphereGraph < ParticleFilterSim
         % Measurement Likelihood
         function l = h_likelihood(sim,x,z)
             d = bsxfun(@minus,sim.h(x,0),z);
-            l = prod(normpdf(d,0,sim.sigma_h+0.01),1)+eps;
+            % l = prod(normpdf(d,0,sim.sigma_h+0.0001),1)+eps;
+            % Use log probabilities due to numerical instabiity
+            l = sum(sim.lognormpdf(d,0,sim.sigma_h),1);
         end
 
         
@@ -111,14 +113,14 @@ classdef TangentSphereGraph < ParticleFilterSim
             my_x0 = sim.simrun.x_gt(:,1);
             for i = 1:nlengths
                 inds = (1:6) + 6*(i-1);
-                pos_noise = 0.12*randn(3,sim.n_samples);
-                vel_noise = 0.12*randn(3,sim.n_samples);
+                pos_noise = 0.2*randn(3,sim.n_samples);
+                % vel_noise = 0.1*randn(3,sim.n_samples);
                 s_pos = sim.normc(bsxfun(@plus,my_x0(inds(1:3)), pos_noise));
-                s_vel = bsxfun(@plus, my_x0(inds(4:6)), vel_noise);
-                s_vel = s_vel - bsxfun(@times,dot(s_vel,s_pos),s_pos);
-                samples(inds,:) = [s_pos; s_vel];
+                % s_vel = bsxfun(@plus, my_x0(inds(4:6)), vel_noise);
+                % s_vel = s_vel - bsxfun(@times,dot(s_vel,s_pos),s_pos);
+                samples(inds,:) = [s_pos; 0*randn(3,sim.n_samples)];
             end
-            w = sim.l1normalize(ones(1,length(samples)));
+            w = sim.uniform();
         end
 
         function v = estimate(sim,samples,w)
@@ -168,9 +170,10 @@ classdef TangentSphereGraph < ParticleFilterSim
             msize = size(meas(1:2:end,:)); % One dimension of measurement size
             plot3([ zeros(msize); ones(msize)*(Zroot+2)     ],...
                   [ zeros(msize); meas(1:2:end,:)*(Zroot+2) ],...
-                  [ zeros(msize); meas(2:2:end,:)*(Zroot+2) ])
+                  [ zeros(msize); meas(2:2:end,:)*(Zroot+2) ],'--')
             % Plot estimate
-            sim.plot_joint_graph(est,'c');
+            % sim.plot_joint_graph(est,'c');
+            sim.plot_joint_graph(sim.x0,'c');
             % Plot ground truth
             sim.plot_joint_graph(x_gt,'r');
             hold off
@@ -198,16 +201,16 @@ classdef TangentSphereGraph < ParticleFilterSim
                         reshape(J(4,:,:),1,[]),...
                         reshape(J(5,:,:),1,[]),0,c);
             end
-            if ~isempty(w)
-                scatter3(reshape(P(3,:,:),1,[]), ...
-                         reshape(P(1,:,:),1,[]), ...
-                         reshape(P(2,:,:),1,[]),...
-                         200*reshape(ones(size(P,2),1)*w,1,[]),[c '.']);
-            else
+            % if ~isempty(w)
+            %     scatter3(reshape(P(3,:,:),1,[]), ...
+            %              reshape(P(1,:,:),1,[]), ...
+            %              reshape(P(2,:,:),1,[]),...
+            %              200*reshape(ones(size(P,2),1)*exp(w),1,[]),[c '.']);
+            % else
                 scatter3(reshape(P(3,:,:),1,[]), ...
                          reshape(P(1,:,:),1,[]), ...
                          reshape(P(2,:,:),1,[]), 100, [c '.']);
-            end
+            % end
         end
 
         %%%%%%%%%%%%%%%% Differential Geometry functions %%%%%%%%%%%%%%%%%%%
@@ -234,34 +237,34 @@ classdef TangentSphereGraph < ParticleFilterSim
             % Make sure zeta0 is in the tangent space of x
             zeta0 = zeta0 - bsxfun(@times,x,dot(x,zeta0));
 
+            % Initialize zetat
+            zetat = zeta0;
             % Transport zeta0 from the tangent space of x to the tangent space of xt
             xi =  sim.log_map_sphere(x,xt);
-            if ~all(isreal(xi))
-                disp('ohno parallel_transport')
-            end
             nrm_xi = sqrt(sum(xi.^2,1));
-            u = sim.normc(xi);
-            u_dot_zeta = dot(u,zeta0);
-            zetat = -bsxfun(@times,x,sin(nrm_xi).*u_dot_zeta) + ...
-                     bsxfun(@times,u,cos(nrm_xi).*u_dot_zeta) + ...
-                     zeta0 - bsxfun(@times,u,u_dot_zeta);   
+            valid_inds = (nrm_xi > 10^-9); % TODO Make threshold not magic number
+            if any(valid_inds)
+                nrm_xi = nrm_xi(valid_inds);
+                u = sim.normc(xi(:,valid_inds));
+                u_dot_zeta = dot(u,zeta0(:,valid_inds));
+                zetat(:,valid_inds) = ...
+                        -bsxfun(@times,x,sin(nrm_xi).*u_dot_zeta) + ...
+                         bsxfun(@times,u,cos(nrm_xi).*u_dot_zeta) + ...
+                         zeta0 - bsxfun(@times,u,u_dot_zeta);   
+            end
         end
         
         function mlog = log_map_sphere(~,x,y)
             % Log map of the sphere
 
             % Get geodesic distance between x and y
-            trxy = dot(x,y);
+            trxy = max(-1,min(dot(x,y),1));
             geodist = acos(trxy) ;
-            if ~all(isreal(geodist))
-                disp('ohno log_map_sphere')
-                disp(geodist)
-            end
 
             % TODO Is there a better way of writing the log map?
             mlog = bsxfun(@times, geodist, bsxfun(@rdivide,...
                             y-bsxfun(@times,x,trxy),...
-                            sqrt(1-trxy.^2)));
+                            eps+sqrt(1-trxy.^2)));
             % if geodist< eps
             %     mlog = zeros(size(x));
             % else
@@ -305,23 +308,32 @@ classdef TangentSphereGraph < ParticleFilterSim
         end
         
         %%%%%%%%%%%%%%%%%%%%%%% Helper functions %%%%%%%%%%%%%%%%%%%%%%%%%%
-        function xhat = hat(~,x)
-            xhat = [     0, -x(3),  x(2);
-                      x(3),     0, -x(1);
-                     -x(2),  x(1),     0 ];
+        function w = normalize(sim,w)
+            % Working in log space
+            W = sim.log_cum_sum(w);
+            w = w - W(end);
         end
-        
-        function [C] = spherical_coords(~,X)
-            C = [ atan2(X(2,:),X(1,:));
-                  acos(X(3,:)) ];
+        function w = uniform(sim)
+            w = ones(1,sim.n_samples)*(-log(sim.n_samples));
         end
-        
-        function [C] = cartesian_coords(~,X)
-            C = [ cos(X(1,:)).*sin(X(2,:));
-                  sin(X(1,:)).*sin(X(2,:));
-                  cos(X(2,:)) ];
+        function Neff = compute_Neff(~,w)
+            Neff = 1/sum(exp(2*w));
         end
-        
+
+        function [samples,w] = resample(sim,samples,w)
+            % Basically our standard algorithm but in log 
+            hist_edges = min([-inf sim.log_cum_sum(w)],0);
+            % get the upper edge exact
+            hist_edges(end) = 0;
+            U1 = rand/sim.n_samples;
+            log_intervals = log(U1:(1/sim.n_samples):1);
+            % this works like the inverse of the empirical distribution and returns
+            % the interval where the sample is to be found
+            [~, idx] = histc(log_intervals, hist_edges);
+            samples = samples(:,idx);
+            w = sim.uniform();
+        end
+
         function v = Proj(~,x)
             if length(size(x)) == 2
                 v = bsxfun(@rdivide,x(1:2,:),x(3,:));
@@ -333,10 +345,32 @@ classdef TangentSphereGraph < ParticleFilterSim
         end
         
         function x = normc(~,x)
-            x = bsxfun(@rdivide,x,sqrt(sum(x.^2,1)));
+            x = bsxfun(@rdivide,x,eps+sqrt(sum(x.^2,1)));
         end
 
+        % Dealing with log formats (TODO make this better somehow)
+        function p = lognormpdf(~,x,mu,sigma)
+            p = -min(log(sqrt(2*pi)*sigma)+(x - mu).^2/(2*sigma.^2),realmax);
+        end
         
+        % Thank you stack overflow
+        function z = log_sum(~,x,y)
+            m1 = max(x,y);
+            m2 = min(x,y);
+            if m1 > m2 + 200
+                z = m1;
+            else
+                z = m1 + log1p(exp(m2-m1));
+            end
+        end
+        
+        function W = log_cum_sum(sim,w)
+            W = zeros(size(w));
+            W(1) = w(1);
+            for i = 2:length(w)
+                W(i) = sim.log_sum(W(i-1),w(i));
+            end
+        end
     end
     
 end

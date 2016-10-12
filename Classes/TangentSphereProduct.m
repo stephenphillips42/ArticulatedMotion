@@ -74,7 +74,7 @@ classdef TangentSphereProduct < ParticleFilterSim
                 s_vel = s_vel - bsxfun(@times,dot(s_vel,s_pos),s_pos);
                 samples(inds,:) = [s_pos; s_vel];
             end
-            w = sim.l1normalize(ones(1,length(samples)));
+            w = sim.uniform();
         end
 
         function v = estimate(~,samples,w)

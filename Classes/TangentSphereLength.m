@@ -74,7 +74,7 @@ classdef TangentSphereLength < ParticleFilterSim
             s_vel = s_vel - bsxfun(@times,dot(s_vel,s_pos),s_pos);
             s_scale = 0.5+1*rand(1,sim.n_samples);
             samples = [s_pos; s_vel; s_scale];
-            w = sim.l1normalize(ones(1,length(samples)));
+            w = sim.uniform();
         end
 
         function v = estimate(~,samples,w)

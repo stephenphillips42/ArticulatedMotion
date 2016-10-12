@@ -63,9 +63,11 @@ classdef ParticleFilterSim < handle
             est = zeros(size(sim.simrun.x_gt,1),sim.T);
             % Visualization
             for i = 1:sim.T
+                disp(i)
+                k = max(1,i-1);
                 % Get metrics
-                w = sim.l1normalize(sim.h_likelihood(samples,sim.simrun.meas(:,i)));
-                Neff(i) = 1/sum(w.^2);
+                w = sim.normalize(sim.h_likelihood(samples,sim.simrun.meas(:,i)));
+                Neff(i) = sim.compute_Neff(w);
                 % Plot reweighted particles
                 if plotting > 1
                     sim.plot_simulation(...
@@ -73,6 +75,7 @@ classdef ParticleFilterSim < handle
                         sim.simrun.meas(:,i),...
                         samples,w,...
                         est(:,k));
+                    pause(0.1);
                 end
                 % Resampling
                 if sim.should_resample(Neff(i),i)
@@ -92,7 +95,6 @@ classdef ParticleFilterSim < handle
                 end
                 % Propogate
                 samples = sim.f(samples);
-                k = max(1,i-1);
                 % Plot propgated particles
                 if plotting > 2
                     sim.plot_simulation(...
@@ -100,6 +102,7 @@ classdef ParticleFilterSim < handle
                         sim.simrun.meas(:,i),...
                         samples,w,...
                         est(:,k));
+                    pause(0.1);
                 end
             end
             % Save results
@@ -152,7 +155,7 @@ classdef ParticleFilterSim < handle
         %%%%%%%%%%%%%%%%%%% Particle filter functions %%%%%%%%%%%%%%%%%%%%
         function [samples,w] = create_samples(sim)
             samples = (randn(sim.dim_space,sim.n_samples));
-            w = sim.l1normalize(ones(1,length(samples)));
+            w = sim.uniform();
         end
         
         function [b] = should_resample(sim,Neff_cur,i)
@@ -171,7 +174,7 @@ classdef ParticleFilterSim < handle
             % the interval where the sample is to be found
             [~, idx] = histc(U1:(1/sim.n_samples):1, edges);
             samples = samples(:,idx);
-            w = sim.l1normalize(ones(1,length(samples)));
+            w = sim.uniform();
         end
         
         function v = estimate(~,samples,w)
@@ -192,10 +195,15 @@ classdef ParticleFilterSim < handle
         end
 
         %%%%%%%%%%%%%%%%%%%%%%% Helper functions %%%%%%%%%%%%%%%%%%%%%%%%%%
-        function v = l1normalize(~,x)
+        function v = normalize(~,x)
             v = x/norm(x,1);
         end
-
+        function w = uniform(sim)
+            w = ones(1,sim.n_samples)/sim.n_samples;
+        end
+        function Neff = compute_Neff(~,w)
+            Neff = 1/sum(w.^2);
+        end
         
     end
     

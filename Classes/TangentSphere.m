@@ -59,7 +59,7 @@ classdef TangentSphere < ProjectionParticleFilterSim
             s_vel = randn(3,sim.n_samples);
             s_vel = s_vel - bsxfun(@times,dot(s_vel,s_pos),s_pos);
             samples = [s_pos; s_vel];
-            w = sim.l1normalize(ones(1,length(samples)));
+            w = sim.uniform();
         end
 
         function v = estimate(~,samples,w)

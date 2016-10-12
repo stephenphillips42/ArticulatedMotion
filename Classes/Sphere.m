@@ -58,7 +58,7 @@ classdef Sphere < ProjectionParticleFilterSim
         %%%%%%%%%%%%%%%%%%% Particle filter functions %%%%%%%%%%%%%%%%%%%%
         function [samples,w] = create_samples(sim)
             samples = normc(randn(sim.dim_space,sim.n_samples));
-            w = sim.l1normalize(ones(1,length(samples)));
+            w = sim.uniform();
         end
         
         function v = estimate(~,samples,w)

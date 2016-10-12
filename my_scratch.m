@@ -10,67 +10,16 @@ nsteps = 20;
 % sim = TangentSphere([normc([1;1;0]);0;0;0.5],nsteps,true);
 % sim.sigma_f = 0.00000000001;
 % sim.n_samples = 2000;
-sim = TangentSphereProduct(...
-        [normc([1;1;0]);0;0;0.5;normc([1;0;0]);0;0;0.5],...
-        nsteps);
-sim.sigma_f = 0.001;
-sim.n_samples = 6000;
-results = sim.simulate(0);
-%% Plot error
-figure;
-[err, err_full] = sim.compute_error(results.simrun.x_gt, results.est);
-% yyaxis left
-% plot(err)
-% yyaxis right
-% plot(results.Neff/max(results.Neff)*max(err))
-% plotyy(1:nsteps,err_full(1:2,:),1:nsteps,results.Neff)
-plotyy(1:nsteps,rad2deg(err_full(1:2,:)),1:nsteps,results.Neff)
-
-% Create data TODO: Make this a function wrapping IcraCreateData
-% tic
-% Zdes = 3;
-% AnglePerFrame = 0.1;
-% [PosTrue,Meas,E] = IcraCreateData('Data/15_02.mat','Data/joints15.mat',AnglePerFrame,Zdes);
-% % Get info for initial configuration of the human
-% edges = E;
-% num_edges = size(E,1);
-% P1 = squeeze(PosTrue(:,1,:));
-% P2 = squeeze(PosTrue(:,2,:));
-% x = cell(nsteps,1);
-% meas = cell(nsteps,1);
-% x0 = zeros(6*num_edges,1);
-% root_pos = PosTrue(:,t,1);
-% % Extract lengths
-% Ls = zeros(8000,num_edges);
-% for j = 1:8000;
-%     Xj = squeeze(PosTrue(:,j,:));
-%     for i = 1:length(E);
-%         Ls(j,i) = norm(Xj(:,E(i,1))-Xj(:,E(i,2)));
-%     end
-% end
-% stdL = std(Ls);
-% L = mean(Ls);
-% % Extract initial position and velocity (roughly)
-% pinds = @(i) (1:3) + 6*(i-1); % Position indecies for x0
-% vinds = @(i) (4:6) + 6*(i-1); % Velocity indecies for x0
-% for t = 1:nsteps
-%     x{t} = zeros(6*num_edges,1);
-%     Pm = squeeze(PosTrue(:,t,:));
-%     Pm1 = squeeze(PosTrue(:,min(nsteps,t+1),:));
-%     for k = 1:num_edges
-%         i = E(k,1);
-%         j = E(k,2);
-%         x{t}(pinds(j-1)) = normc(Pm(:,j) - Pm(:,i));
-%         x1 = normc(Pm1(:,j) - Pm1(:,i));
-%         % Log map of the sphere 
-%         % TODO: functionize this later
-%         trxy = x{t}(pinds(j-1)).'*x1;
-%         geodist = acos(trxy);
-%         x{t}(vinds(j-1)) = geodist*(x1-x{t}(pinds(j-1))*trxy)/sqrt(1-trxy.^2);
-%     end
-%     meas{t} = squeeze(Meas(:,t,:));
-% end
-% toc
+% sim = TangentSphereProduct(...
+%         [normc([1;1;0]);0;0;0.5;normc([1;0;0]);0;0;0.5],...
+%         nsteps);
+% sim.sigma_f = 0.001;
+% sim.n_samples = 6000;
+% results = sim.simulate(0);
+% % Plot error
+% figure;
+% [err, err_full] = sim.compute_error(results.simrun.x_gt, results.est);
+% plotyy(1:nsteps,rad2deg(err_full(1,:)),1:nsteps,results.Neff)
 
 % 
 % % Draw 3D figure using kinematic chain :D
@@ -154,20 +103,17 @@ plotyy(1:nsteps,rad2deg(err_full(1:2,:)),1:nsteps,results.Neff)
 % disp(mean(runtimes))
 % disp(mean(1./max(runtimes,2*eps)))
 
-% Get results
+%% Get results
+if ~exist('x','var')
+    matname = 'Data/15_02.mat';
+    jointsname = 'Data/joints15.mat';
+    [x, meas] = LoadFormattedData(matname, jointsname);
+end
+
 % profile on
-% sim = TangentSphereGraph(x{1},nsteps,L,E,[],root_pos);
+sim = TangentSphereGraph(x{1},10,L,E,[],root_pos);
+results = sim.simulate(3);
+% sim = CircleLogW(normc([-1;1]),500);
 % results = sim.simulate(0);
 % profile off
 % profile viewer
-% toc
-% 
-% % TODO Make the error printing... better, more modular
-% figure;
-% err = acosd(dot(results.simrun.x_gt(1:ndims,:), results.est(1:ndims,:)));
-% plot(err)
-% hold on
-% plot(results.Neff/max(results.Neff)*max(err))
-% hold off
-
-
