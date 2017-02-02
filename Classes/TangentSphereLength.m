@@ -24,23 +24,23 @@ classdef TangentSphereLength < ParticleFilterSim
     end
     
     methods
-        function sim = TangentSphereLength(x0,T,plot_type)
-            if nargin < 3
-                plot_type = true;
-            end
+        function sim = TangentSphereLength(varargin)
             % Parameters for parent classes
-            nparticles = 2000; % Number of particles
-            dim = 7; % Dimension of the space - R^3 x R^3
-            meas_dim = 2; % Only 2D perspective projection
-            sim@ParticleFilterSim(x0,T,nparticles,dim,meas_dim);
+            varargin = [
+                {'nparticles', 2000, 'dim', 7,...
+                 'meas_dim', 2}, varargin
+                ];
+            sim@ParticleFilterSim(varargin{:});
+            definedOrDefault = @(name,default) ...
+                                definedOrDefault_long(name,default,varargin);
             % Measurement model parameters
-            sim.sigma_h = sqrt(0.05*(pi/180));
-            sim.R_h = eye(3);
-            sim.T_h = [0;0;4];
+            sim.sigma_h =  definedOrDefault('sigma_h',sqrt(0.05*(pi/180)));
+            sim.R_h = definedOrDefault('R_h',eye(3));
+            sim.T_h = definedOrDefault('T_h',[0;0;4]);
             % Motion model parameters
-            sim.sigma_f = sqrt(0.05*(pi/180)); 
+            sim.sigma_f = definedOrDefault('sigma_f',sqrt(0.05*(pi/180)));
             % Visualization Variables
-            sim.plot_type = plot_type;
+            sim.plot_type = definedOrDefault('plot_type',true);
             [sim.X, sim.Y, sim.Z] = sphere(20);
         end
         

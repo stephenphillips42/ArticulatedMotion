@@ -12,25 +12,17 @@ classdef ProjectionParticleFilterSim < ParticleFilterSim
     end
     
     methods
-        function sim = ProjectionParticleFilterSim(x0,T,nsamples,dim_space,sigma_h,proj_dims,div_dim,R_h,T_h)
-            if nargin < 6
-                proj_dims = 1:(dim_space-1);
-            end
-            if nargin < 7
-                div_dim = dim_space;
-            end
-            if nargin < 8
-                R_h = eye(dim_space);
-            end
-            if nargin < 9
-                T_h = [zeros(length(proj_dims),1); length(dim_space)+1];
-            end
-            sim@ParticleFilterSim(x0,T,nsamples,dim_space,length(proj_dims));
-            sim.proj_dims = proj_dims;
-            sim.div_dim = div_dim;
-            sim.sigma_h = sigma_h;
-            sim.R_h = R_h;
-            sim.T_h = T_h;
+        function sim = ProjectionParticleFilterSim(varargin)
+            definedOrDefault = @(name,default) ...
+                                definedOrDefault_long(name,default,varargin);
+            sim@ParticleFilterSim(varargin{:});
+            sim.proj_dims = definedOrDefault('proj_dims',1:(sim.dim_space-1));
+            sim.dim_meas = length(sim.proj_dims);
+            sim.div_dim = definedOrDefault('div_dim', sim.dim_space);
+            sim.sigma_h = definedOrDefault('sigma_h', 0.1);
+            sim.R_h = definedOrDefault('R_h', eye(sim.dim_space));
+            sim.T_h = definedOrDefault('T_h',[ zeros(length(sim.proj_dims),1);
+                                               length(sim.dim_space)+1       ]);
         end
         
         %%%%%%%%%%%%%%%%%%%%%%% Model of the system %%%%%%%%%%%%%%%%%%%%%%%

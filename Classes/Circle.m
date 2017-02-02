@@ -13,14 +13,17 @@ classdef Circle < ProjectionParticleFilterSim
     end
     
     methods
-        function sim = Circle(x0,T)
+        function sim = Circle(varargin)
             % Parameters for parent classes
-            nparticles = 300; % Number of particles
-            dim = 2; % Dimension of the space - R^2
-            sigma_h = sqrt(0.1*(pi/180));
-            sim@ProjectionParticleFilterSim(x0,T,nparticles,dim,sigma_h);
+            varargin = [
+                {'dim_space',2,'dim_meas',1}, varargin
+                ];
+            sim@ProjectionParticleFilterSim(varargin{:});
+            definedOrDefault = @(name,default) ...
+                                definedOrDefault_long(name,default,varargin);
             % Motion model parameters
             sim.v = (1*(pi/180));
+            sim.sigma_h = definedOrDefault('sigma_h',sqrt(0.1*(pi/180)));
             sim.sigma_f = (1*(pi/180)); 
         end
         

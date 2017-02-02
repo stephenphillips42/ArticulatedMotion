@@ -17,27 +17,32 @@ classdef ParticleFilterSim < handle
         %%% Filter variables
         
         simrun    % Stores information about current run
+        pows      % Powers for annealing
     end
     
     methods
-        function sim = ParticleFilterSim(x0,T,nsamples,dim_space,dim_meas)
+        function sim = ParticleFilterSim(varargin)
             % Builds the basic necessities for running the simulation
-
+            definedOrDefault = @(name,default) ...
+                         definedOrDefault_long(name,default,varargin);
             % Filter properties
-            sim.n_samples = nsamples;
-            sim.x0 = x0;
-            sim.dim_space = dim_space;
-            sim.dim_meas = dim_meas;
+            sim.n_samples = definedOrDefault('nsamples',300);
+            sim.x0 = definedOrDefault('x0',[]);
+            sim.dim_space = definedOrDefault('dim_space',3);
+            sim.dim_meas = definedOrDefault('dim_meas',sim.dim_space-1);
             
             % Simulation properties
-            sim.T = T;
-            sim.dt = 0.1;
+            sim.T = definedOrDefault('nsteps',10);
+            sim.dt = definedOrDefault('dt',0.1);
 
             % Get template simrun
             sim.simrun.x_gt = 0;    % Ground truth position
             sim.simrun.meas = 0;    % Measurements of position
             sim.simrun.noise_f = 0; % Movement noise
             sim.simrun.noise_h = 0; % Measurment noise
+            
+            % For annealing
+            sim.pows = definedOrDefault('pows',[0.1,0.3,0.5,0.7,1.0]);
         end
         
         %%%%%%%%%%%%%%%%%%%%%%%%% Run Simulation %%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -63,7 +68,7 @@ classdef ParticleFilterSim < handle
             est = zeros(size(sim.simrun.x_gt,1),sim.T);
             % Visualization
             for i = 1:sim.T
-                disp(i)
+                fprintf('Step %d\n',i)
                 k = max(1,i-1);
                 % Get metrics
                 w = sim.normalize(sim.h_likelihood(samples,sim.simrun.meas(:,i)));
@@ -75,7 +80,7 @@ classdef ParticleFilterSim < handle
                         sim.simrun.meas(:,i),...
                         samples,w,...
                         est(:,k));
-                    pause(0.1);
+                    pause(sim.dt);
                 end
                 % Resampling
                 if sim.should_resample(Neff(i),i)
@@ -102,7 +107,7 @@ classdef ParticleFilterSim < handle
                         sim.simrun.meas(:,i),...
                         samples,w,...
                         est(:,k));
-                    pause(0.1);
+                    pause(sim.dt);
                 end
             end
             % Save results
@@ -163,6 +168,11 @@ classdef ParticleFilterSim < handle
         end
         
         function [samples,w] = resample(sim,samples,w)
+            [samples, ~] = sim.resample_weighted(samples,w);
+            w = sim.uniform();
+        end
+        
+        function [samples,w] = resample_weighted(sim,samples,w)
             % Taken from Diego Andrés Alvarez Marín's Particle Filter code
             % this is performing latin hypercube sampling on w
             % protect against accumulated round-off
@@ -170,13 +180,22 @@ classdef ParticleFilterSim < handle
             % get the upper edge exact
             edges(end) = 1;
             U1 = rand/sim.n_samples;
-            % this works like the inverse of the empirical distribution and returns
-            % the interval where the sample is to be found
+            % this works like the inverse of the empirical distribution and
+            % returns the interval where the sample is to be found
             [~, idx] = histc(U1:(1/sim.n_samples):1, edges);
             samples = samples(:,idx);
+        end
+
+        function [samples,w] = resample_annealing(sim,samples,w)
+            w_prev = w;
+            for k = 1:length(sim.pows)
+                w_cur = sim.weight_power(w_prev,sim.pows(k));
+                [samples,idx] = datasample(samples,sim.n_samples,2,'Weighting',w_cur);
+                w_prev = w_cur(idx);
+            end
             w = sim.uniform();
         end
-        
+
         function v = estimate(~,samples,w)
             v = sum(bsxfun(@times,samples,w),2);
         end
@@ -204,7 +223,9 @@ classdef ParticleFilterSim < handle
         function Neff = compute_Neff(~,w)
             Neff = 1/sum(w.^2);
         end
-        
+        function w_k = weight_power(sim,w,p)
+            w_k = sim.normalize(sim.normalize(w).^p);
+        end
     end
     
 end

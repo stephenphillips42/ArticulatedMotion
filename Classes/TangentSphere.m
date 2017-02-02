@@ -21,24 +21,20 @@ classdef TangentSphere < ProjectionParticleFilterSim
     end
     
     methods
-        function sim = TangentSphere(x0,T,plot_type)
-            if nargin < 3
-                plot_type = true;
-            end
+        function sim = TangentSphere(varargin)
             % Parameters for parent classes
-            nparticles = 800; % Number of particles
-            dim = 6; % Dimension of the space - R^3 x R^3
-            sigma_h = sqrt(0.1*(pi/180));
-            proj_dims = 1:2; % Only first 2 dimensions are projected
-            div_dim = 3; % Divide by the 3rd dimension
-            sim@ProjectionParticleFilterSim(...
-                    x0,T,nparticles,dim,sigma_h,...
-                    proj_dims,div_dim,...
-                    [eye(3) zeros(3); zeros(3,6)],...
-                    [0;0;4;0;0;0]);
+            varargin = [
+                {'nparticles', 800, 'dim', 6,...
+                 'proj_dims', 1:2, 'div_dim', 3,...
+                 'R_h',[eye(3) zeros(3); zeros(3,6)],...
+                 'T_h', [0;0;4;0;0;0]}, varargin
+                ];
+            sim@ProjectionParticleFilterSim(varargin{:});
+            definedOrDefault = @(name,default) ...
+                                definedOrDefault_long(name,default,varargin);
             % Motion model parameters
-            sim.sigma_f = sqrt(0.1*(pi/180)); 
-            sim.plot_type = plot_type;
+            sim.sigma_f = definedOrDefault('sigma_f',sqrt(0.1*(pi/180)));
+            sim.plot_type = definedOrDefault('plot_type',true);
             
             % Visualization Variables
             [sim.X, sim.Y, sim.Z] = sphere(20);

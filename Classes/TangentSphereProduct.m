@@ -16,20 +16,22 @@ classdef TangentSphereProduct < ParticleFilterSim
     end
     
     methods
-        function sim = TangentSphereProduct(x0,T)
+        function sim = TangentSphereProduct(varargin)
             % Parameters for parent classes
-            nparticles = 2000; % Number of particles
-            dim = 12; % Dimension of the space - R^3 x R^3
-            meas_dim = 4; 
-            sim@ParticleFilterSim(x0,T,nparticles,dim,meas_dim);
+            varargin = [
+                {'nparticles', 2000, 'dim_space', 12, 'dim_meas', 4}, varargin
+                ];
+            sim@ParticleFilterSim(varargin{:});
+            definedOrDefault = @(name,default) ...
+                    definedOrDefault_long(name,default,varargin);
             % Measurement model parameters
-            sim.sigma_h = sqrt(0.01*(pi/180));
-            sim.R_h = eye(3);
-            sim.T_h = [0;0;4];
+            sim.sigma_h = definedOrDefault('sigma_h',sqrt(0.01*(pi/180)));
+            sim.R_h = definedOrDefault('R_h',eye(3));
+            sim.T_h = definedOrDefault('T_h',[0;0;4]);
             % Motion model parameters
-            sim.sigma_f = sqrt(0.01*(pi/180)); 
+            sim.sigma_f = definedOrDefault('sigma_f',sqrt(0.01*(pi/180)));
             % Arm lengths
-            sim.lengths = [2;1];
+            sim.lengths = definedOrDefault('lengths',[2;1]);
         end
         
         %%%%%%%%%%%%%%%%%%%%%%% Model of the system %%%%%%%%%%%%%%%%%%%%%%%

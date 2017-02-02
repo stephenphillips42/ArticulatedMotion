@@ -29,39 +29,35 @@ classdef TangentSphereGraph < ParticleFilterSim
     % TODO: Make this so that it uses the PointClasses
     
     methods
-        function sim = TangentSphereGraph(x0,T,L,E,Ed,root_pos,sphere_dim)
-            if nargin < 6
-                root_pos = [0;0;0];
-            end
-            if nargin < 7
-                sphere_dim = 3;
-            end
+        function sim = TangentSphereGraph(varargin)
             % Parameters for parent classes
-            nparticles = 5000; % Number of particles
-            dim = 12; % Dimension of the space - R^3 x R^3
-            meas_dim = length(L)*2;
-            sim@ParticleFilterSim(x0,T,nparticles,dim,meas_dim);
-            % Measurement model parameters
-            sim.dt = 0.4;
-            sim.sigma_h = 0.001;
-            sim.R_h = eye(3);
-            sim.T_h = [0;0;4];
-            % Motion model parameters
-            sim.sigma_f = sqrt(0.001*(pi/180));
-            % Other noise parameters
-            sim.sigma_ip = 0.1;
-            sim.sigma_iv = 0.0;
-            sim.sigma_rp = 0.016;
-            sim.sigma_rv = 0.001;
+            sim@ParticleFilterSim(varargin{:});
+            definedOrDefault = @(name,default) ...
+                         definedOrDefault_long(name,default,varargin);
             % Graph parameters
-            sim.n_edges = size(E,1);
-            sim.lengths = L;
-            sim.edges = E;
-            sim.edges_constr = Ed;
-            sim.root_pos = root_pos;
-            % Assertion
-            assert(size(x0,1) == 2*sphere_dim*sim.n_edges)
-            sim.sphere_dim = sphere_dim;
+            sim.edges = definedOrDefault('edges',[]);
+            sim.n_edges = size(sim.edges,1);
+            sim.lengths = definedOrDefault('lengths',ones(1,sim.n_edges));
+            sim.edges_constr = definedOrDefault('edges_constr',[1,1]);
+            % Other basic parameters
+            sim.sphere_dim = definedOrDefault('sphere_dim',3);
+            sim.dim_space = 2*sim.sphere_dim*sim.n_edges;
+            sim.root_pos = definedOrDefault('root_pos',zeros(sim.sphere_dim,1));
+            assert(size(sim.x0,1) == sim.dim_space)
+            sim.n_samples = definedOrDefault('nsamples',5000);
+            % Measurement model parameters
+            sim.dim_meas = definedOrDefault('dim_meas',(sim.sphere_dim-1)*sim.n_edges);
+            sim.dt = definedOrDefault('dt',0.4);
+            sim.sigma_h = definedOrDefault('sigma_h',0.001);
+            sim.R_h = definedOrDefault('R_h',eye(3));
+            sim.T_h = definedOrDefault('T_h',[0;0;4]);
+            % Motion model parameters
+            sim.sigma_f = definedOrDefault('sigma_f',sqrt(0.001*(pi/180)));
+            % Other noise parameters
+            sim.sigma_ip = definedOrDefault('sigma_ip',0.1);
+            sim.sigma_iv = definedOrDefault('sigma_iv',0.0);
+            sim.sigma_rp = definedOrDefault('sigma_rp',0.016);
+            sim.sigma_rv = definedOrDefault('sigma_rv',0.001);
         end
         
         %%%%%%%%%%%%%%%%%%%%%%% Model of the system %%%%%%%%%%%%%%%%%%%%%%%

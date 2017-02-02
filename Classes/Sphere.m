@@ -19,29 +19,31 @@ classdef Sphere < ProjectionParticleFilterSim
         
         %%% Helping parameters
         
-        omega = [0; 0; 1];
+        omega;
         omegahat
     end
     
     methods
-        function sim = Sphere(x0,T,plot_type)
-            if nargin < 3
-                plot_type = true;
-            end
+        function sim = Sphere(x0,T)
             % Parameters for parent classes
-            nparticles = 1000; % Number of particles
-            dim = 3; % Dimension of the space - R^3
             sigma_h = sqrt(0.02*(pi/180));
-            sim@ProjectionParticleFilterSim(x0,T,nparticles,dim,sigma_h);
+            varargin = {...
+                'sigma_h',sigma_h,'nsamples',1000,...
+                'dim_space',3,'x0',x0,'nsteps',T...
+                };
+            sim@ProjectionParticleFilterSim(varargin{:});
+            definedOrDefault = @(name,default) ...
+                                definedOrDefault_long(name,default,varargin);
             % Motion model parameters
+            sim.omega = definedOrDefault('omega',[0;0;1]);
             sim.omegahat = sim.hat(sim.omega);
             sim.sigma_f = sqrt(1*(pi/180)); 
-            sim.plot_type = plot_type;
+            sim.plot_type = definedOrDefault('plot_type',true);
             
             % Visualization Variables
             [sim.X, sim.Y, sim.Z] = sphere(20);
-            sim.angle_offset = 0;
-            sim.angle_speed = 5;
+            sim.angle_offset = definedOrDefault('angle_offset',0);
+            sim.angle_speed = definedOrDefault('angle_speed',5);
         end
         
         %%%%%%%%%%%%%%%%%%%%%%% Model of the system %%%%%%%%%%%%%%%%%%%%%%%

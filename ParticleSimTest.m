@@ -7,29 +7,31 @@ if nargin < 4
     plot = 1;
 end
 
-if name == 'Circle'
-    sim = Circle(normc([-1;1]),nsteps);
-elseif name == 'Sphere'
+if strcmp(name, 'Circle')
+    sim = Circle('x0',normc([-1;1]),'nsteps',nsteps);
+elseif strcmp(name, 'Sphere')
     sim = Sphere(normc([-1;-1;1]),nsteps);
-elseif name == 'TangentSphere'
-    sim = TangentSphere([normc([-1;-1;1]);0;0.5;0.5],nsteps,true);
-elseif name == 'TangentSphereLength'
-    sim = TangentSphereLength([normc([-1;-1;1]);0;0.5;0.5;1.1],nsteps,true);
-elseif name == 'TangentSphere'
-    sim = TangentSphere([normc([1;1;0]);0;0;0.5],nsteps,true);
+elseif strcmp(name, 'TangentSphere')
+    sim = TangentSphere('x0',[normc([-1;-1;1]);0;0.5;0.5],'nsteps',nsteps,'plot_type',true);
+elseif strcmp(name, 'TangentSphereLength')
+    sim = TangentSphereLength('x0',[normc([-1;-1;1]);0;0.5;0.5;1.1],'nsteps',nsteps,'plot_type',true);
+elseif strcmp(name, 'TangentSphere2')
+    sim = TangentSphere('x0',[normc([1;1;0]);0;0;0.5],'nsteps',nsteps,'plot_type',true);
     sim.sigma_f = 0.00000000001;
     sim.n_samples = 2000;
-elseif name == 'TangentSphereProduct'
+elseif strcmp(name, 'TangentSphereProduct')
     sim = TangentSphereProduct(...
-            [normc([1;1;0]);0;0;0.5;normc([1;0;0]);0;0;0.5],...
-            nsteps);
+            'x0',[normc([1;1;0]);0;0;0.5;normc([1;0;0]);0;0;0.5],...
+            'nsteps',nsteps);
     sim.sigma_f = 0.001;
     sim.n_samples = 6000;
 else
     error('Particle filter %s not implemented yet',name)
 end
 % results = sim.simulate(0);
+tic
 sim.simulate(plot);
+toc
 
 % Plot error
 if plot_error
