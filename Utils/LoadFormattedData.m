@@ -1,17 +1,14 @@
-function [ x, meas ] = LoadFormattedData(matname, jointsname)
+function [ data ] = LoadFormattedData(matname, jointsname)
 %LOADFORMATTEDDATA Puts ICRA data in format that we want
 
 Zdes = 3;
 AnglePerFrame = 0.1;
+nsteps = 50;
 [PosTrue,Meas,E] = IcraCreateData(matname,jointsname,AnglePerFrame,Zdes);
 % Get info for initial configuration of the human
-edges = E;
 num_edges = size(E,1);
-P1 = squeeze(PosTrue(:,1,:));
-P2 = squeeze(PosTrue(:,2,:));
 x = cell(nsteps,1);
 meas = cell(nsteps,1);
-x0 = zeros(6*num_edges,1);
 root_pos = PosTrue(:,1,1);
 % Extract lengths
 Ls = zeros(8000,num_edges);
@@ -43,6 +40,13 @@ for t = 1:nsteps
     end
     meas{t} = squeeze(Meas(:,t,:));
 end
+
+data.x = x;
+data.root_pos = root_pos;
+data.meas = meas;
+data.L = L;
+data.stdL = stdL;
+data.E = E;
 
 end
 
