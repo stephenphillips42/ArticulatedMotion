@@ -25,6 +25,25 @@ elseif strcmp(name, 'TangentSphereProduct')
             'nsteps',nsteps);
     sim.sigma_f = 0.001;
     sim.n_samples = 6000;
+elseif strcmp(name, 'TangentSphereGraph')
+    % Get results
+    tic
+    matname = 'Data/15_02.mat';
+    jointsname = 'Data/joints15.mat';
+    data = LoadFormattedData(matname, jointsname, nsteps);
+    toc
+    th = pi/4;
+    R_h = [ cos(th), 0, sin(th);
+                  0, 1,       0;
+           -sin(th), 0, cos(th) ];
+    sim = TangentSphereGraph(...
+                'x0',data.x{1},...
+                'nsteps',nsteps,...
+                'lengths',data.L,...
+                'edges',data.E,...
+                'root_pos',data.root_pos,...
+                'T_h',[0;0;0],...
+                'R_h',R_h);
 else
     error('Particle filter %s not implemented yet',name)
 end

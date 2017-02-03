@@ -1,9 +1,11 @@
-function [ data ] = LoadFormattedData(matname, jointsname)
+function [ data ] = LoadFormattedData(matname, jointsname, nsteps)
 %LOADFORMATTEDDATA Puts ICRA data in format that we want
 
+if nargin < 3
+    nsteps = 50;
+end
 Zdes = 3;
 AnglePerFrame = 0.1;
-nsteps = 50;
 [PosTrue,Meas,E] = IcraCreateData(matname,jointsname,AnglePerFrame,Zdes);
 % Get info for initial configuration of the human
 num_edges = size(E,1);
