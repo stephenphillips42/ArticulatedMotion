@@ -91,7 +91,7 @@ classdef TangentSphere < ProjectionParticleFilterSim
             colormap summer;
             C = ones(size(sim.X));
             C(:) = sim.h_likelihood([sim.X(:) sim.Y(:) sim.Z(:) zeros(length(sim.Z(:)),3)].', meas);
-            surf(sim.X,sim.Y,sim.Z,C);
+            surf(sim.X,sim.Y,sim.Z,exp(C));
             % Change view of world
             [az,el] = view;
             % [az_gt,el_gt,~] = cart2sph(x_gt(1),x_gt(2),x_gt(3));
@@ -100,7 +100,7 @@ classdef TangentSphere < ProjectionParticleFilterSim
             axis equal
             hold on
             % Plot samples
-            scatter3(samples(1,:),samples(2,:),samples(3,:),eps+w*(2^14),'b.')
+            scatter3(samples(1,:),samples(2,:),samples(3,:),eps+exp(w)*(2^14),'b.')
             quiver3(samples(1,:),samples(2,:),samples(3,:),...
                     samples(4,:),samples(5,:),samples(6,:),0,'b')
             % Plot measurement
@@ -129,12 +129,12 @@ classdef TangentSphere < ProjectionParticleFilterSim
             z(:) = sim.h_likelihood([sim.cartesian_coords([a(:) b(:)].'); zeros(3,length(a(:)))],meas);
             figure(1)
             colormap summer
-            contourf(a,b,z,5)
+            contourf(a,b,exp(z),5)
             hold on
             % Get spherical coordinates
             samples_s = sim.spherical_coords(samples);
             % Plot samples
-            scatter(samples_s(1,:),samples_s(2,:),eps+w*(2^14),'b.')
+            scatter(samples_s(1,:),samples_s(2,:),eps+exp(w)*(2^14),'b.')
             hold on
             % Plot measurements
             sim.plot_meas_2D(meas)

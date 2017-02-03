@@ -61,7 +61,7 @@ classdef TangentSphereProduct < ParticleFilterSim
         % Measurement Likelihood
         function l = h_likelihood(sim,x,z)
             d = bsxfun(@minus,sim.h(x,0),z);
-            l = prod(normpdf(d,0,sim.sigma_h),1)+eps;
+            l = sum(lognormpdf(d,0,sim.sigma_h),1)+eps;
         end
 
         %%%%%%%%%%%%%%%%%%% Particle filter functions %%%%%%%%%%%%%%%%%%%%
@@ -112,7 +112,7 @@ classdef TangentSphereProduct < ParticleFilterSim
             % view(az, el)
             hold on
             % Plot samples
-            sim.plot_joint(samples,'b',w)
+            sim.plot_joint(samples,'b',exp(w))
             % Plot measurement
             for i = 1:length(sim.lengths)
                 inds = (1:2) + 2*(i-1);

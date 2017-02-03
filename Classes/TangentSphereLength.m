@@ -64,7 +64,7 @@ classdef TangentSphereLength < ParticleFilterSim
         % Measurement Likelihood
         function l = h_likelihood(sim,x,z)
             d = bsxfun(@minus,sim.h(x,0),z);
-            l = prod(normpdf(d,0,sim.sigma_h),1);
+            l = sum(lognormpdf(d,0,sim.sigma_h),1);
         end
         
         %%%%%%%%%%%%%%%%%%% Particle filter functions %%%%%%%%%%%%%%%%%%%%
@@ -124,7 +124,7 @@ classdef TangentSphereLength < ParticleFilterSim
             scatter3(samples(1,:).*samples(7,:),...
                      samples(2,:).*samples(7,:),...
                      samples(3,:).*samples(7,:),...
-                     eps+w*(2^14),'b.')
+                     eps+exp(w)*(2^14),'b.')
             hold on
             quiver3(samples(1,:).*samples(7,:),...
                     samples(2,:).*samples(7,:),...

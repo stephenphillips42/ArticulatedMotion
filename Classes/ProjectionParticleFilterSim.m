@@ -36,7 +36,7 @@ classdef ProjectionParticleFilterSim < ParticleFilterSim
         % Measurement Likelihood
         function l = h_likelihood(sim,x,z)
             d = bsxfun(@minus,sim.h(x,0),z);
-            l = prod(normpdf(d,0,sim.sigma_h),1);
+            l = sum(lognormpdf(d,0,sim.sigma_h),1);
         end
         
         %%%%%%%%%%%%%%%%%%%%%%% Helper functions %%%%%%%%%%%%%%%%%%%%%%%%%%

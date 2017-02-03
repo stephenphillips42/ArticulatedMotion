@@ -86,7 +86,7 @@ classdef Sphere < ProjectionParticleFilterSim
             colormap summer;
             C = ones(size(sim.X));
             C(:) = sim.h_likelihood([sim.X(:) sim.Y(:) sim.Z(:)].',meas);
-            surf(sim.X,sim.Y,sim.Z,C);
+            surf(sim.X,sim.Y,sim.Z,exp(C));
             % Change view of world
             [az,el] = view;
             sim.angle_offset = sim.angle_offset + sim.angle_speed;
@@ -94,7 +94,7 @@ classdef Sphere < ProjectionParticleFilterSim
             axis equal
             hold on
             % Plot samples
-            scatter3(samples(1,:),samples(2,:),samples(3,:),eps+w*(2^14),'b.')
+            scatter3(samples(1,:),samples(2,:),samples(3,:),eps+exp(w)*(2^14),'b.')
             % Plot measurement
             start_point = -sim.R_h.'*sim.T_h;
             end_point = sim.R_h.'*([meas;1]*10 - sim.T_h);
@@ -116,12 +116,12 @@ classdef Sphere < ProjectionParticleFilterSim
             z = zeros(size(a));
             z(:) = sim.h_likelihood(sim.cartesian_coords([a(:) b(:)].'),meas);
             figure(1)
-            contourf(a,b,z,5)
+            contourf(a,b,exp(z),5)
             hold on
             % Get spherical coordinates
             samples_s = sim.spherical_coords(samples);
             % Plot samples
-            scatter(samples_s(1,:),samples_s(2,:),eps+w*(2^14),'b.')
+            scatter(samples_s(1,:),samples_s(2,:),eps+exp(w)*(2^14),'b.')
             hold on
             % Plot measurements
             sim.plot_meas_2D(meas)

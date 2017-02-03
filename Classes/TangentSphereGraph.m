@@ -93,7 +93,7 @@ classdef TangentSphereGraph < ParticleFilterSim
         function l = h_likelihood(sim,x,z)
             d = bsxfun(@minus,sim.h(x,0),z);
             % Use log probabilities due to numerical instabiity
-            l = sum(sim.lognormpdf(d,0,sim.sigma_h),1);
+            l = sum(lognormpdf(d,0,sim.sigma_h),1);
         end
 
         
@@ -152,7 +152,7 @@ classdef TangentSphereGraph < ParticleFilterSim
                 vinds = (1:p) + p + 2*p*(i-1);
                 pos_noise = sim.sigma_ip*randn(p,sim.n_samples);
                 vel_noise = sim.sigma_iv*randn(p,sim.n_samples);
-                s_pos = sim.normc(bsxfun(@plus,my_x0(pinds), pos_noise));
+                s_pos = mynormc(bsxfun(@plus,my_x0(pinds), pos_noise));
                 s_vel = bsxfun(@plus, my_x0(vinds), vel_noise);
                 s_vel = s_vel - bsxfun(@times,dot(s_vel,s_pos),s_pos);
                 samples([pinds,vinds],:) = [s_pos; s_vel];
@@ -167,7 +167,7 @@ classdef TangentSphereGraph < ParticleFilterSim
             for i = 1:sim.n_edges
                 pinds = (1:p) + 2*p*(i-1);
                 vinds = (1:p) + p + 2*p*(i-1);
-                v(pinds) = sim.normc(sum(...
+                v(pinds) = mynormc(sum(...
                                 bsxfun(@times,samples(1:p,:),w),2));
                 v(vinds) = sum(bsxfun(@times,samples((1:p)+p,:),w),2);
                 v(vinds) = v(vinds) - dot(v(pinds),v(vinds))*v(pinds);
@@ -180,8 +180,8 @@ classdef TangentSphereGraph < ParticleFilterSim
             e1 = zeros(sim.n_edges,size(x_true,2));
             for i = 1:sim.n_edges
                 xind = (1:p) + 2*p*(i-1);
-                e1(i,:) = acos(dot(normc(x_true(xind,:)),...
-                                   normc(x_est(xind,:))));
+                e1(i,:) = acos(dot(mynormc(x_true(xind,:)),...
+                                   mynormc(x_est(xind,:))));
             end
             % Velocity percent error
             e2 = zeros(sim.n_edges,size(x_true,2));
@@ -258,30 +258,9 @@ classdef TangentSphereGraph < ParticleFilterSim
         end
 
         %%%%%%%%%%%%%%%%%%%%%%% Helper functions %%%%%%%%%%%%%%%%%%%%%%%%%%
-        function w = normalize(sim,w)
-            % Working in log space
-            W = sim.log_cum_sum(w);
-            w = w - W(end);
-        end
-        function w = uniform(sim)
-            w = ones(1,sim.n_samples)*(-log(sim.n_samples));
-        end
-        function Neff = compute_Neff(~,w)
-            Neff = 1/sum(exp(2*w));
-        end
-
         function [samples,w] = resample(sim,samples,w)
         % Resample based on log probabilities w
-            % Basically our standard algorithm but in log 
-            hist_edges = min([-inf sim.log_cum_sum(w)],0);
-            % get the upper edge exact
-            hist_edges(end) = 0;
-            U1 = rand/sim.n_samples;
-            log_intervals = log(U1:(1/sim.n_samples):1);
-            % this works like the inverse of the empirical distribution and returns
-            % the interval where the sample is to be found
-            [~, idx] = histc(log_intervals, hist_edges);
-            samples = samples(:,idx);
+            [samples, ~] = sim.resample_weighted(samples,w);
             % Add noise...
             p = sim.sphere_dim;
             for i = 1:sim.n_edges
@@ -289,7 +268,7 @@ classdef TangentSphereGraph < ParticleFilterSim
                 vinds = (1:p) + p + 2*p*(i-1);
                 pos_noise = sim.sigma_rp*randn(p,sim.n_samples);
                 vel_noise = sim.sigma_rv*randn(p,sim.n_samples);
-                s_pos = sim.normc(samples(pinds,:) + pos_noise);
+                s_pos = mynormc(samples(pinds,:) + pos_noise);
                 s_vel = samples(vinds,:) + vel_noise;
                 s_vel = s_vel - bsxfun(@times,dot(s_vel,s_pos),s_pos);
                 samples([pinds,vinds],:) = [s_pos; s_vel];
@@ -309,35 +288,8 @@ classdef TangentSphereGraph < ParticleFilterSim
             end
         end
         
-        function x = normc(~,x)
-        % Simplified version of normc from MATLAB
-            x = bsxfun(@rdivide,x,eps+sqrt(sum(x.^2,1)));
-        end
-
-        function p = lognormpdf(~,x,mu,sigma)
-        % Dealing with log probability, use this when the normal pdf comes up
-            p = -min(log(sqrt(2*pi)*sigma)+(x - mu).^2/(2*sigma.^2),realmax);
-        end
-        
-        % Thank you stack overflow
-        function z = log_sum(~,x,y)
-        % Computes log(exp(x) + exp(y)) in a numerical stable fashion
-            m1 = max(x,y);
-            m2 = min(x,y);
-            if m1 > m2 + 200
-                z = m1;
-            else
-                z = m1 + log1p(exp(m2-m1));
-            end
-        end
-        
-        function W = log_cum_sum(sim,w)
-        % Cumulative sum of log weights w using numerically stable methods
-            W = zeros(size(w));
-            W(1) = w(1);
-            for i = 2:length(w)
-                W(i) = sim.log_sum(W(i-1),w(i));
-            end
+        function w_k = weight_power(sim,w,p)
+            w_k = sim.normalize(sim.normalize(w)*p);
         end
     end
 end

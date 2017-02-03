@@ -2,7 +2,7 @@
 %rng(1561)
 rng(5747)
 % Begin timing
-tic
+% tic
 nsteps = 10;
 
 % Create graph
@@ -29,6 +29,7 @@ for i = 1:size(E,1)
     x0(vinds) = vels(i)*[cos(thetas(i)+pi/2); sin(thetas(i)+pi/2)];
 end
 
+% profile on
 sim = TangentCircleGraph(...
             'x0',x0,...
             'nsteps',nsteps,...
@@ -36,7 +37,11 @@ sim = TangentCircleGraph(...
             'edges',E,...
             'root_pos',root_pos);
 
-sim.simulate(3);
+
+% sim.simulate(3);
+
+% profile off
+% profile viewer
 
 % End timing
-toc
+% toc

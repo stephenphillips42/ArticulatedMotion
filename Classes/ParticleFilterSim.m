@@ -174,15 +174,18 @@ classdef ParticleFilterSim < handle
         
         function [samples,w] = resample_weighted(sim,samples,w)
             % Taken from Diego Andrés Alvarez Marín's Particle Filter code
+            % Basically our standard algorithm but in log 
+
             % this is performing latin hypercube sampling on w
             % protect against accumulated round-off
-            edges = min([0 cumsum(w)],1);
+            hist_edges = min([-inf sim.log_cum_sum(w)],0);
             % get the upper edge exact
-            edges(end) = 1;
+            hist_edges(end) = 0;
             U1 = rand/sim.n_samples;
-            % this works like the inverse of the empirical distribution and
-            % returns the interval where the sample is to be found
-            [~, idx] = histc(U1:(1/sim.n_samples):1, edges);
+            log_intervals = log(U1:(1/sim.n_samples):1);
+            % this works like the inverse of the empirical distribution and returns
+            % the interval where the sample is to be found
+            [~, idx] = histc(log_intervals, hist_edges);
             samples = samples(:,idx);
         end
 
@@ -215,19 +218,43 @@ classdef ParticleFilterSim < handle
 
         %%%%%%%%%%%%%%%%%%%%%%% Helper functions %%%%%%%%%%%%%%%%%%%%%%%%%%
         %%%%%%%%%%%%%%%%%%%%%%% 
-        function v = normalize(~,x)
-            v = x/norm(x,1);
+        % Thank you stack overflow
+        function z = log_sum(~,x,y)
+        % Computes log(exp(x) + exp(y)) in a numerical stable fashion
+            m1 = max(x,y);
+            m2 = min(x,y);
+            if m1 > m2 + 200
+                z = m1;
+            else
+                z = m1 + log1p(exp(m2-m1));
+            end
+        end
+        function W = log_cum_sum(sim,w)
+        % Cumulative sum of log weights w using numerically stable methods
+            W = zeros(size(w));
+            W(1) = w(1);
+            for i = 2:length(w)
+                W(i) = sim.log_sum(W(i-1),w(i));
+            end
+        end
+
+        function w = normalize(sim,w)
+            % v = x/norm(x,1);
+            % Working in log space
+            W = sim.log_cum_sum(w);
+            w = w - W(end);
         end
         function w = uniform(sim)
-            w = ones(1,sim.n_samples)/sim.n_samples;
+            w = ones(1,sim.n_samples)*(-log(sim.n_samples));
+            % w = ones(1,sim.n_samples)/sim.n_samples;
         end
         function Neff = compute_Neff(~,w)
-            Neff = 1/sum(w.^2);
+            % Neff = 1/sum(w.^2);
+            Neff = 1/sum(exp(2*w));
         end
         function w_k = weight_power(sim,w,p)
-            w_k = sim.normalize(sim.normalize(w).^p);
+            w_k = sim.normalize(w*p);
         end
     end
-    
 end
 

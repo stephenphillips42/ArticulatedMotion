@@ -69,7 +69,7 @@ classdef Circle < ProjectionParticleFilterSim
                  [start_point(2),end_point(2)],'r-')
              % Get and plot estimate
             plot(est(1)*l,est(2)*l,'c-')
-            scatter(samples(1,:),samples(2,:),w*(12*2^11),'b.')
+            scatter(samples(1,:),samples(2,:),exp(w)*(12*2^11),'b.')
             hold off
             axis equal
             axis([-1.2 1.2 -1.2 1.2])
