@@ -258,10 +258,7 @@ classdef TangentSphereGraph < ParticleFilterSim
         end
 
         %%%%%%%%%%%%%%%%%%%%%%% Helper functions %%%%%%%%%%%%%%%%%%%%%%%%%%
-        function [samples,w] = resample(sim,samples,w)
-        % Resample based on log probabilities w
-            [samples, ~] = sim.resample_weighted(samples,w);
-            % Add noise...
+        function samples = add_noise(sim,samples)
             p = sim.sphere_dim;
             for i = 1:sim.n_edges
                 pinds = (1:p) + 2*p*(i-1);
@@ -273,10 +270,7 @@ classdef TangentSphereGraph < ParticleFilterSim
                 s_vel = s_vel - bsxfun(@times,dot(s_vel,s_pos),s_pos);
                 samples([pinds,vinds],:) = [s_pos; s_vel];
             end
-            
-            w = sim.uniform();
         end
-
         function v = Proj(sim,x)
             p = sim.sphere_dim;
             if length(size(x)) == 2

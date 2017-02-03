@@ -6,21 +6,23 @@ rng(5747)
 nsteps = 10;
 
 % Create graph
-% E = [ 1, 2;
-%       2, 3;
-%       1, 4;
-%       4, 5;
-%       1, 6 ];
-% L = [ 2, 1, 1, 1, 1 ]*0.25;
 E = [ 1, 2;
       2, 3;
-      1, 4 ];
-L = [ 2, 1, 1 ]*0.25;
+      1, 4;
+      4, 5;
+      1, 6 ];
+L = [ 2, 1, 1, 1, 1 ]*0.25;
+% E = [ 1, 2;
+%       2, 3;
+%       1, 4 ];
+% L = [ 2, 1, 1 ]*0.25;
 
 % Create initial condition
 root_pos = [0;0];
-thetas = (pi/4)*[1;7;7];
-vels = (pi/64)*[2;-3;-1];
+thetas = (pi/4)*[1;7;5;3;7];
+vels = (pi/64)*[2;-3;3;-3;-1];
+% thetas = (pi/4)*[1;7;7];
+% vels = (pi/64)*[2;-3;-1];
 x0 = zeros(4*size(E,1),1);
 for i = 1:size(E,1)
     pinds = (1:2) + 4*(i-1);
@@ -39,6 +41,7 @@ sim = TangentCircleGraph(...
 
 
 % sim.simulate(3);
+sim.simulate_annealing(3);
 
 % profile off
 % profile viewer

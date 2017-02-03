@@ -8,6 +8,7 @@ classdef ParticleFilterSim < handle
         dim_meas  % Dimension of the measurement model
         n_samples % Number of particles in the filter
         x0        % Initial position of the true particle
+        sigma_s   % Resample variance (could be multidimensional)
         
         %%% Simulation Properties
         
@@ -30,7 +31,8 @@ classdef ParticleFilterSim < handle
             sim.x0 = definedOrDefault('x0',[]);
             sim.dim_space = definedOrDefault('dim_space',3);
             sim.dim_meas = definedOrDefault('dim_meas',sim.dim_space-1);
-            
+            sim.sigma_s = definedOrDefault('sigma_s',0.0);
+
             % Simulation properties
             sim.T = definedOrDefault('nsteps',10);
             sim.dt = definedOrDefault('dt',0.1);
@@ -116,6 +118,92 @@ classdef ParticleFilterSim < handle
             results.simrun = sim.simrun;
         end
 
+        function [results] = simulate_annealing(sim,plotting,simrun)
+            % Runs the simulation of the particle filter.
+            % Based on parameters set in the constructor. 
+            % Input:
+            %   plotting - (optional) level of plotting desired, from 0-3
+            %   simrun   - (optional) precomputed simulation run
+            % Output:
+            %   results - numerical results of the simulation
+            if nargin < 2
+                plotting = 1;
+            end
+            if nargin < 3
+                sim.simrun = sim.create_simrun();
+            else
+                sim.simrun = simrun;
+            end
+
+            [samples,w] = sim.create_samples();
+            Neff = zeros(1,sim.T);
+            est = zeros(size(sim.simrun.x_gt,1),sim.T);
+            % Visualization
+            for i = 1:sim.T
+                fprintf('Step %d\n',i)
+                k = max(1,i-1);
+                % Get metrics
+                w = sim.normalize(...
+                        sim.h_likelihood(samples,sim.simrun.meas(:,i)));
+                Neff(i) = sim.compute_Neff(w);
+                % Resampling
+                if sim.should_resample(Neff(i),i)
+                    if plotting > 1
+                        sim.plot_simulation(...
+                            sim.simrun.x_gt(:,i),...
+                            sim.simrun.meas(:,i),...
+                            samples,w,...
+                            est(:,i));
+                        % Pause for viewing
+                        pause(sim.dt)
+                    end
+                    w_prev = w;
+                    for k = 1:length(sim.pows)
+                        if plotting > 2
+                            sim.plot_simulation(...
+                                sim.simrun.x_gt(:,i),...
+                                sim.simrun.meas(:,i),...
+                                samples,w,...
+                                est(:,i));
+                            % Pause for viewing
+                            pause(sim.dt)
+                        end
+                        w_cur = sim.weight_power(w_prev,sim.pows(k));
+                        samples = sim.add_noise(sim.resample_weighted(samples,w_cur));
+                        w_prev = sim.normalize(sim.h_likelihood(samples,sim.simrun.meas(:,i)));
+                    end
+                    w = sim.uniform();
+                end
+                % Estimate
+                est(:,i) = sim.estimate(samples,w);
+                % Plot final resampled (or not) particles
+                if plotting > 0
+                    sim.plot_simulation(...
+                        sim.simrun.x_gt(:,i),...
+                        sim.simrun.meas(:,i),...
+                        samples,w,...
+                        est(:,i));
+                    % Pause for viewing
+                    pause(sim.dt)
+                end
+                % Propogate
+                samples = sim.f(samples);
+                % Plot propgated particles
+                if plotting > 2 && i < sim.T
+                    sim.plot_simulation(...
+                        sim.simrun.x_gt(:,i),...
+                        sim.simrun.meas(:,i),...
+                        samples,w,...
+                        est(:,k));
+                    pause(sim.dt);
+                end
+            end
+            % Save results
+            results.Neff = Neff;
+            results.est = est;
+            results.simrun = sim.simrun;
+        end
+
         function [simrun] = create_simrun(sim)
             % Precompute motion before simulation
             simrun.x_gt = zeros(size(sim.x0,1),sim.T);
@@ -168,11 +256,11 @@ classdef ParticleFilterSim < handle
         end
         
         function [samples,w] = resample(sim,samples,w)
-            [samples, ~] = sim.resample_weighted(samples,w);
+            samples = sim.add_noise(sim.resample_weighted(samples,w));
             w = sim.uniform();
         end
         
-        function [samples,w] = resample_weighted(sim,samples,w)
+        function [ samples ] = resample_weighted(sim,samples,w)
             % Taken from Diego Andrés Alvarez Marín's Particle Filter code
             % Basically our standard algorithm but in log 
 
@@ -189,14 +277,8 @@ classdef ParticleFilterSim < handle
             samples = samples(:,idx);
         end
 
-        function [samples,w] = resample_annealing(sim,samples,w)
-            w_prev = w;
-            for k = 1:length(sim.pows)
-                w_cur = sim.weight_power(w_prev,sim.pows(k));
-                [samples,idx] = datasample(samples,sim.n_samples,2,'Weighting',w_cur);
-                w_prev = w_cur(idx);
-            end
-            w = sim.uniform();
+        function samples = add_noise(sim,samples)
+            samples = samples + sim.sigma_s*randn(size(samples));
         end
 
         function v = estimate(~,samples,w)
