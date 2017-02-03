@@ -101,7 +101,7 @@ classdef ParticleFilterSim < handle
                 % Propogate
                 samples = sim.f(samples);
                 % Plot propgated particles
-                if plotting > 2
+                if plotting > 2 && i < sim.T
                     sim.plot_simulation(...
                         sim.simrun.x_gt(:,i),...
                         sim.simrun.meas(:,i),...
@@ -115,7 +115,7 @@ classdef ParticleFilterSim < handle
             results.est = est;
             results.simrun = sim.simrun;
         end
-        
+
         function [simrun] = create_simrun(sim)
             % Precompute motion before simulation
             simrun.x_gt = zeros(size(sim.x0,1),sim.T);
@@ -214,6 +214,7 @@ classdef ParticleFilterSim < handle
         end
 
         %%%%%%%%%%%%%%%%%%%%%%% Helper functions %%%%%%%%%%%%%%%%%%%%%%%%%%
+        %%%%%%%%%%%%%%%%%%%%%%% 
         function v = normalize(~,x)
             v = x/norm(x,1);
         end

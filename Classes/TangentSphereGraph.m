@@ -49,8 +49,9 @@ classdef TangentSphereGraph < ParticleFilterSim
             sim.dim_meas = definedOrDefault('dim_meas',(sim.sphere_dim-1)*sim.n_edges);
             sim.dt = definedOrDefault('dt',0.4);
             sim.sigma_h = definedOrDefault('sigma_h',0.001);
-            sim.R_h = definedOrDefault('R_h',eye(3));
-            sim.T_h = definedOrDefault('T_h',[0;0;4]);
+            sim.R_h = definedOrDefault('R_h',eye(sim.sphere_dim));
+            sim.T_h = definedOrDefault('T_h',[zeros(sim.sphere_dim-1,1);
+                                              sim.sphere_dim+1]);
             % Motion model parameters
             sim.sigma_f = definedOrDefault('sigma_f',sqrt(0.001*(pi/180)));
             % Other noise parameters
@@ -63,16 +64,17 @@ classdef TangentSphereGraph < ParticleFilterSim
         %%%%%%%%%%%%%%%%%%%%%%% Model of the system %%%%%%%%%%%%%%%%%%%%%%%
         % Motion Model
         function [v, noise] = f(sim,x,noise)
+            p = sim.sphere_dim;
             if nargin < 3
-                noise = randn(3*sim.n_edges, size(x,2))*sim.sigma_f;
+                noise = randn(p*sim.n_edges, size(x,2))*sim.sigma_f;
             end
-            v = zeros(6*sim.n_edges,size(x,2));
-            k = sim.sphere_dim;
+            v = zeros(2*p*sim.n_edges,size(x,2));
             for i = 1:sim.n_edges
-                inds = (1:2*k) + 2*k*(i-1);
-                P = x(inds,:);
-                V = [ x(inds(k+1:2*k),:); noise((1:k)+k*(i-1),:) ];
-                v(inds,:) = tangent_sphere_exp_map(P,V,1);
+                pinds = (1:p) + 2*p*(i-1);
+                vinds = (1:p) + p + 2*p*(i-1);
+                P = x([pinds,vinds],:);
+                V = [ x(vinds,:); noise((1:p)+p*(i-1),:) ];
+                v([pinds,vinds],:) = tangent_sphere_exp_map(P,V,1);
             end
         end
         % Measurement Model
@@ -97,24 +99,25 @@ classdef TangentSphereGraph < ParticleFilterSim
         
         function [P, J] = build_positions_from_state(sim,X)
             % Get 3D positions of the vertecies and joints from state X
-            % Input: X - (3*n_edges x N) size matrix of the states
-            % Output: P - (3 x n_edges+1 x N) size matrix of the positions
+            % Input: X - (sphere_dim*n_edges x N) size matrix of the states
+            % Output: P - (sphere_dim x n_edges+1 x N) size matrix of the positions
             %             for each of the states
-            %         J - (6 x n_edges x N) size matrix of the joints roots
+            %         J - (2*sphere_dim x n_edges x N) size matrix of the joints roots
             %             and vectors
-            xind = @(i) (1:3) + 6*(i-2); % Position indeces for graph
-            P = zeros(3,sim.n_edges+1,size(X,2));
-            J = zeros(6,sim.n_edges,size(X,2));
-            P(1,:,:) = sim.root_pos(1);
-            P(2,:,:) = sim.root_pos(2);
-            P(3,:,:) = sim.root_pos(3);
+            p = sim.sphere_dim;
+            xind = @(i) (1:p) + 2*p*(i-2); % Position indeces for graph
+            P = zeros(p,sim.n_edges+1,size(X,2));
+            J = zeros(2*p,sim.n_edges,size(X,2));
+            for i = 1:p
+                P(i,:,:) = sim.root_pos(i) + sim.T_h(i);
+            end
             for k = 1:sim.n_edges
                 i = sim.edges(k,1);
                 j = sim.edges(k,2);
                 % Compute position (stored for later)
-                J(1:3,j-1,:) = P(:,i,:);
-                J(4:6,j-1,:) = sim.lengths(j-1)*X(xind(j),:);
-                P(:,j,:) = P(:,i,:) + J(4:6,j-1,:);
+                J(1:p,j-1,:) = P(:,i,:);
+                J((1:p)+p,j-1,:) = sim.lengths(j-1)*sim.R_h*X(xind(j),:);
+                P(:,j,:) = P(:,i,:) + J((1:p)+p,j-1,:);
             end
         end
 
@@ -141,47 +144,52 @@ classdef TangentSphereGraph < ParticleFilterSim
         end
         
         function [samples,w] = create_samples(sim)
-            nlengths = length(sim.lengths);
-            samples = zeros(6*nlengths,sim.n_samples);
+            p = sim.sphere_dim;
+            samples = zeros(2*p*sim.n_edges,sim.n_samples);
             my_x0 = sim.simrun.x_gt(:,1);
-            for i = 1:nlengths
-                inds = (1:6) + 6*(i-1);
-                pos_noise = sim.sigma_ip*randn(3,sim.n_samples);
-                vel_noise = sim.sigma_iv*randn(3,sim.n_samples);
-                s_pos = sim.normc(bsxfun(@plus,my_x0(inds(1:3)), pos_noise));
-                s_vel = bsxfun(@plus, my_x0(inds(4:6)), vel_noise);
+            for i = 1:sim.n_edges
+                pinds = (1:p) + 2*p*(i-1);
+                vinds = (1:p) + p + 2*p*(i-1);
+                pos_noise = sim.sigma_ip*randn(p,sim.n_samples);
+                vel_noise = sim.sigma_iv*randn(p,sim.n_samples);
+                s_pos = sim.normc(bsxfun(@plus,my_x0(pinds), pos_noise));
+                s_vel = bsxfun(@plus, my_x0(vinds), vel_noise);
                 s_vel = s_vel - bsxfun(@times,dot(s_vel,s_pos),s_pos);
-                samples(inds,:) = [s_pos; s_vel];
+                samples([pinds,vinds],:) = [s_pos; s_vel];
             end
             w = sim.uniform();
         end
 
         function v = estimate(sim,samples,w)
             % So I don't know how to measure 'average' in the case
-            v = zeros(6*sim.n_edges,1);
+            p = sim.sphere_dim;
+            v = zeros(2*p*sim.n_edges,1);
             for i = 1:sim.n_edges
-                v((1:3)+6*(i-1)) = ...
-                    sim.normc(sum(bsxfun(@times,samples((1:3)+6*(i-1),:),w),2));
-                v((4:6)+6*(i-1)) = ...
-                    (sum(bsxfun(@times,samples((4:6)+6*(i-1),:),w),2));
-                v((4:6)+6*(i-1)) = v((4:6)+6*(i-1)) ...
-                    - dot(v((1:3)+6*(i-1)),v((4:6)+6*(i-1)))*v((1:3)+6*(i-1));
+                pinds = (1:p) + 2*p*(i-1);
+                vinds = (1:p) + p + 2*p*(i-1);
+                v(pinds) = sim.normc(sum(...
+                                bsxfun(@times,samples(1:p,:),w),2));
+                v(vinds) = sum(bsxfun(@times,samples((1:p)+p,:),w),2);
+                v(vinds) = v(vinds) - dot(v(pinds),v(vinds))*v(pinds);
             end
         end
         
         function [e, e_full] = compute_error(sim,x_true,x_est)
             % Position error (degrees)
+            p = sim.sphere_dim;
             e1 = zeros(sim.n_edges,size(x_true,2));
             for i = 1:sim.n_edges
-                e1(i,:) = acos(dot(normc(x_true((1:3)+6*(i-1),:)),...
-                                   normc(x_est((1:3)+6*(i-1),:))));
+                xind = (1:p) + 2*p*(i-1);
+                e1(i,:) = acos(dot(normc(x_true(xind,:)),...
+                                   normc(x_est(xind,:))));
             end
             % Velocity percent error
             e2 = zeros(sim.n_edges,size(x_true,2));
             for i = 1:sim.n_edges
-                true_norms = sqrt(sum(x_true((4:6)+6*(i-1),:).^2,1));
-                diff_norms = sqrt(sum((x_true((4:6)+6*(i-1),:) - ...
-                                       x_est((4:6)+6*(i-1),:)).^2,1));
+                vind = (1:p) + p + 2*p*(i-1);
+                true_norms = sqrt(sum(x_true(vind,:).^2,1));
+                diff_norms = sqrt(sum((x_true(vind,:) - ...
+                                       x_est(vind,:)).^2,1));
                 e2(i,:) = diff_norms ./ true_norms;
             end
             e = sum(e1,1);
@@ -192,7 +200,7 @@ classdef TangentSphereGraph < ParticleFilterSim
         function plot_simulation(sim,x_gt,meas,samples,~,~)
             subplot(2,1,1)
             % Change view of world
-            Zroot = sim.root_pos(3);
+            Zroot = sim.root_pos(3) + sim.T_h(3);
             scatter3(0,0,0);
             hold on
             % Plot samples
@@ -275,25 +283,27 @@ classdef TangentSphereGraph < ParticleFilterSim
             [~, idx] = histc(log_intervals, hist_edges);
             samples = samples(:,idx);
             % Add noise...
+            p = sim.sphere_dim;
             for i = 1:sim.n_edges
-                inds = (1:6) + 6*(i-1);
-                pos_noise = sim.sigma_rp*randn(3,sim.n_samples);
-                vel_noise = sim.sigma_rv*randn(3,sim.n_samples);
-                s_pos = sim.normc(samples(inds(1:3),:) + pos_noise);
-                s_vel = samples(inds(4:6),:) + vel_noise;
+                pinds = (1:p) + 2*p*(i-1);
+                vinds = (1:p) + p + 2*p*(i-1);
+                pos_noise = sim.sigma_rp*randn(p,sim.n_samples);
+                vel_noise = sim.sigma_rv*randn(p,sim.n_samples);
+                s_pos = sim.normc(samples(pinds,:) + pos_noise);
+                s_vel = samples(vinds,:) + vel_noise;
                 s_vel = s_vel - bsxfun(@times,dot(s_vel,s_pos),s_pos);
-                samples(inds,:) = [s_pos; s_vel];
+                samples([pinds,vinds],:) = [s_pos; s_vel];
             end
             
             w = sim.uniform();
         end
 
         function v = Proj(sim,x)
-            k = sim.sphere_dim;
+            p = sim.sphere_dim;
             if length(size(x)) == 2
-                v = bsxfun(@rdivide,x(1:(k-1),:),x(k,:));
+                v = bsxfun(@rdivide,x(1:(p-1),:),x(p,:));
             elseif length(size(x)) == 3
-                v = bsxfun(@rdivide,x(1:(k-1),:,:),x(k,:,:));
+                v = bsxfun(@rdivide,x(1:(p-1),:,:),x(p,:,:));
             else
                 error('Input x on projections wrong size');
             end

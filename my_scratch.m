@@ -5,25 +5,38 @@ rng(5747)
 tic
 nsteps = 10;
 
-% Get results
-if ~exist('data','var')
-    matname = 'Data/15_02.mat';
-    jointsname = 'Data/joints15.mat';
-    data = LoadFormattedData(matname, jointsname);
+% Create graph
+% E = [ 1, 2;
+%       2, 3;
+%       1, 4;
+%       4, 5;
+%       1, 6 ];
+% L = [ 2, 1, 1, 1, 1 ]*0.25;
+E = [ 1, 2;
+      2, 3;
+      1, 4 ];
+L = [ 2, 1, 1 ]*0.25;
+
+% Create initial condition
+root_pos = [0;0];
+thetas = (pi/4)*[1;7;7];
+vels = (pi/64)*[2;-3;-1];
+x0 = zeros(4*size(E,1),1);
+for i = 1:size(E,1)
+    pinds = (1:2) + 4*(i-1);
+    vinds = (3:4) + 4*(i-1);
+    x0(pinds) = [cos(thetas(i)); sin(thetas(i))];
+    x0(vinds) = vels(i)*[cos(thetas(i)+pi/2); sin(thetas(i)+pi/2)];
 end
 
-% profile on
-sim = TangentSphereGraph(...
-            'x0',data.x{1},...
+sim = TangentCircleGraph(...
+            'x0',x0,...
             'nsteps',nsteps,...
-            'lengths',data.L,...
-            'edges',data.E,...
-            'root_pos',data.root_pos);
-results = sim.simulate(3);
-% sim = CircleLogW(normc([-1;1]),500);
-% results = sim.simulate(0);
-% profile off
-% profile viewer
+            'lengths',L,...
+            'edges',E,...
+            'root_pos',root_pos);
+
+sim.simulate(3);
 
 % End timing
 toc
