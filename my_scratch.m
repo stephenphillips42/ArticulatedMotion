@@ -3,19 +3,19 @@
 rng(5747)
 % Begin timing
 % tic
-nsteps = 10;
+nsteps = 4;
 
 % Create graph
-E = [ 1, 2;
-      2, 3;
-      1, 4;
-      4, 5;
-      1, 6 ];
-L = [ 2, 1, 1, 1, 1 ]*0.25;
 % E = [ 1, 2;
 %       2, 3;
-%       1, 4 ];
-% L = [ 2, 1, 1 ]*0.25;
+%       1, 4;
+%       4, 5;
+%       1, 6 ];
+% L = [ 2, 1, 1, 1, 1 ]*0.25;
+E = [ 1, 2;
+      2, 3;
+      1, 4 ];
+L = [ 2, 1, 1 ]*0.25;
 
 % Create initial condition
 root_pos = [0;0];
@@ -37,7 +37,9 @@ sim = TangentCircleGraph(...
             'nsteps',nsteps,...
             'lengths',L,...
             'edges',E,...
-            'root_pos',root_pos);
+            'root_pos',root_pos,...
+            'nsamples',10000,...
+            'pows',[1e-5,1e-4,1e-3,1e-2,1e-1,1e0]);
 
 
 % sim.simulate(3);

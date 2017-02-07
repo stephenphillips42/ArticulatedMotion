@@ -1,10 +1,13 @@
-function ParticleSimTest(name, nsteps, plot_error, plot)
+function ParticleSimTest(name, nsteps, plot_error, plot, anneal)
 % Test various particle filters
 if nargin < 3
     plot_error = false;
 end
 if nargin < 4
     plot = 1;
+end
+if nargin < 5
+    anneal = false;
 end
 
 if strcmp(name, 'Circle')
@@ -49,7 +52,11 @@ else
 end
 % results = sim.simulate(0);
 tic
-sim.simulate(plot);
+if anneal
+    sim.simulate_annealing(plot);
+else
+    sim.simulate(plot);
+end
 toc
 
 % Plot error
