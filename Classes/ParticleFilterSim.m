@@ -141,7 +141,7 @@ classdef ParticleFilterSim < handle
             % Visualization
             for i = 1:sim.T
                 fprintf('Step %d\n',i)
-                k = max(1,i-1);
+                l = max(1,i-1);
                 % Get metrics
                 w = sim.normalize(...
                         sim.h_likelihood(samples,sim.simrun.meas(:,i)));
@@ -194,7 +194,7 @@ classdef ParticleFilterSim < handle
                         sim.simrun.x_gt(:,i),...
                         sim.simrun.meas(:,i),...
                         samples,w,...
-                        est(:,k));
+                        est(:,l));
                     pause(sim.dt);
                 end
             end
