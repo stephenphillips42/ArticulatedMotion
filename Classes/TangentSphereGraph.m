@@ -39,6 +39,10 @@ classdef TangentSphereGraph < ParticleFilterSim
             sim.n_edges = size(sim.edges,1);
             sim.lengths = definedOrDefault('lengths',ones(1,sim.n_edges));
             sim.edges_constr = definedOrDefault('edges_constr',[1,1]);
+            % Assert that the graph is a DAG
+            assert(all(sort(sim.edges(:,2)) == unique(sim.edges(:,2))))
+            [~,e_idx] = sort(sim.edges(:,2));
+            sim.edges = sim.edges(e_idx,:);
             % Other basic parameters
             sim.sphere_dim = definedOrDefault('sphere_dim',3);
             sim.dim_space = 2*sim.sphere_dim*sim.n_edges;
@@ -53,12 +57,12 @@ classdef TangentSphereGraph < ParticleFilterSim
             sim.T_h = definedOrDefault('T_h',[zeros(sim.sphere_dim-1,1);
                                               sim.sphere_dim+1]);
             % Motion model parameters
-            sim.sigma_f = definedOrDefault('sigma_f',sqrt(0.001*(pi/180)));
+            sim.sigma_f = definedOrDefault('sigma_f',sqrt(0.000*(pi/180)));
             % Other noise parameters
             sim.sigma_ip = definedOrDefault('sigma_ip',0.1);
             sim.sigma_iv = definedOrDefault('sigma_iv',0.0);
             sim.sigma_rp = definedOrDefault('sigma_rp',0.016);
-            sim.sigma_rv = definedOrDefault('sigma_rv',0.001);
+            sim.sigma_rv = definedOrDefault('sigma_rv',0.005);
         end
         
         %%%%%%%%%%%%%%%%%%%%%%% Model of the system %%%%%%%%%%%%%%%%%%%%%%%
@@ -108,9 +112,8 @@ classdef TangentSphereGraph < ParticleFilterSim
             xind = @(i) (1:p) + 2*p*(i-2); % Position indeces for graph
             P = zeros(p,sim.n_edges+1,size(X,2));
             J = zeros(2*p,sim.n_edges,size(X,2));
-            for i = 1:p
-                P(i,:,:) = sim.root_pos(i) + sim.T_h(i);
-            end
+            r = sim.R_h*sim.root_pos + sim.T_h;
+            for i = 1:p; P(i,:,:) = r(i); end
             for k = 1:sim.n_edges
                 i = sim.edges(k,1);
                 j = sim.edges(k,2);
@@ -144,19 +147,7 @@ classdef TangentSphereGraph < ParticleFilterSim
         end
         
         function [samples,w] = create_samples(sim)
-            p = sim.sphere_dim;
-            samples = zeros(2*p*sim.n_edges,sim.n_samples);
-            my_x0 = sim.simrun.x_gt(:,1);
-            for i = 1:sim.n_edges
-                pinds = (1:p) + 2*p*(i-1);
-                vinds = (1:p) + p + 2*p*(i-1);
-                pos_noise = sim.sigma_ip*randn(p,sim.n_samples);
-                vel_noise = sim.sigma_iv*randn(p,sim.n_samples);
-                s_pos = mynormc(bsxfun(@plus,my_x0(pinds), pos_noise));
-                s_vel = bsxfun(@plus, my_x0(vinds), vel_noise);
-                s_vel = s_vel - bsxfun(@times,dot(s_vel,s_pos),s_pos);
-                samples([pinds,vinds],:) = [s_pos; s_vel];
-            end
+            samples = sim.add_noise(repmat(sim.x0,sim.n_samples));
             w = sim.uniform();
         end
 
